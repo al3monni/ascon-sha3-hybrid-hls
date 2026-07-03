@@ -1,0 +1,36 @@
+DONE
+
+- Analisi paper su Crypto-Agility
+
+
+WRITTEN THEORY
+
+- Scrivere paragrafo per motivare e giustificare la tesi. Focus su: Myrtus Security Levels + Crypto-Agility
+	[La Crypto-Agility giustifica un acceleratore ibrido rispetto ad implementazioni standalone?]
+- Scrivere paragrafo sullo stato dell'arte delle implementazioni di ASCON e SHA3 e su implementazioni IBRIDE
+- Scrivere paragrafo sullo stato dell'arte delle metriche usate
+
+
+PRAGMA
+
+- Trovare una configurazione ottimale delle pragma e preparare un report per ogni pragma sul loro significato
+- Organizzare un archivio con ogni configurazione e relative prestazioni
+
+
+LATENZA SOFTWARE
+
+- Impacchettare per bene il confronto della latenza software
+- Considerare se i risulati ottenuti sono all'interno della std
+- Fare dei grafici per la latenza software
+- Specificare come lavora il parametro dei cicli di clock per la latenza software
+- Provare a considerare il contesto per vedere quanto impatta il contorno sull'esecuzione del solo acceleratore (cpu e ram usage del processo)
+- Comparare le prestazioni allo stato dell'arte degli algoritmi con quelle registrate
+
+
+TEST HARDWARE
+
+- Ricevere kria
+- Eseguire la latenza software sull'arm della kria
+- Impacchettare l'acceleratore ed istanziarlo ed eseguirlo sull'fpga
+	[Seguire tutorial Claudio per il wrapping dell'acceleratore]
+	[Interfaccia Axi-Stream da specificare nel topmodule (hash.c ) per il wrapper dell IP]
