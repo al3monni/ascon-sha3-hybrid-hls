@@ -1,0 +1,23 @@
+NIST CSWP 39 — Considerations for Achieving Crypto Agility - Dec 25
+
+La Cypto-Agility è la capacità di sostituire e adattare gli algoritmi crittografici in protocolli, applicazioni, software, hardware, firmware, infrastrutture e organizzazioni, preservando sicurezza e continuità operativa. Nel 2016 il NIST la definisce anche come la capacità di selezionare a run-time tra gli algoritmi disponibili in base alle loro funzioni di sicurezza combinate. Questa proprietà richiede quindi di supportare multipli algoritmi in un protocollo.
+
+Questa proprietà origina dal fatto che gli algoritmi attuali possono diventare obsoleti in futuro come nel caso della Post-Quantum Cryptography (PQC), per cui tutti gli algoritmi a chiave pubblica dovranno essere sostituiti. Le transizioni richiedono decenni per poter essere portate a termine poiché cambiare un algoritmo implica aggiornare protocolli, librerie, hardware e adattare tutta l'infrastruttura. Per questo, si vuole garantire la capacità di sostituire gli algoritmi in modo rapido.
+
+Supportare la Crypto-Agility significa quindi progettare in anticipo la capacità di cambiamento (assumendo che gli algoritmi cambieranno) prima che ci sia la necessità che questo avvenga, ovvero nel caso in cui un algoritmo viene compromesso.
+
+Cambiamento non significa esclusivamente scegliere un altro algoritmo, ma anche avere la possibilità di configurare i parametri di uno stesso algoritmo, come ad esempio la lunghezza delle chiavi.
+I sistemi devono inoltre supportare la coesistenza di protocolli diversi per mantenere la compatibilità con i sistemi esistenti.
+
+Lo strumento principale per raggiungere questo obiettivo è aggiungere un livello di astrazione, rappresentato da Crypto-API, per separare le applicazioni dai protocolli crittografici sottostanti. In questo modo è possibile cambiare l'algoritmo solo a livello di libreria senza dover riscrivere la logica applicativa [già accade]. Lo stesso discorso vale per i sistemi operativi.
+
+[Sezione 4 pag. 23-24]
+In ambienti cloud, distribuiti, e composti da numerosi microservizi, la negoziazione può essere centralizzata ed eseguita a livello di infrastruttura, disaccoppiando ulteriormente le applicazioni dalla crittografia  [aggancio a MYRTUS].
+Lato hardware è possibile avere diversi livelli di crypto-agility. Chip e moduli dedicati (es. TPM) non permettono solitamente nessun grado di agilità e richiedono di essere sostituiti in caso di sostituzione degli algoritmi. Eccezion fatta per le FPGA, data la loro natura riconfigurabile. L'immutabilità dell'HW garantisce resistenza agli attacchi ma complica le transizioni tra algoritmi.
+
+[Sezione 6 pag. 32]
+### La più grande sfida alla crypto-agility sono i constraint hardware. Potrebbe non essere possibile implementare molti algoritmi in un unica piattaforma hardware. Ottimizzazioni come il riuso di acceleratori costituiscono una importante area di ricerca in questo campo, soprattutto per completare la transizione PQC.
+
+Gli algoritmi crittografici devono considerare la limitazione delle risorse, ad esempio condividendo primitive comuni per ottimizzare le risorse hardware.
+ 
+Questa proprietà si applica maggiormente agli algoritmi PCQ, che prevedono chiavi e firme più grandi, e ai sistemi embedded, a causa delle risorse limitate.
