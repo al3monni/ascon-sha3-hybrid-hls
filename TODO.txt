@@ -1,5 +1,9 @@
-DONE
+PRIORITÀ
+- Test MYRTUS Security Manager
+- Test implementazione software su Kria
 
+
+DONE
 - Analisi paper su Crypto-Agility
 
 
@@ -13,13 +17,15 @@ WRITTEN THEORY
 
 PRAGMA
 
-- Trovare una configurazione ottimale delle pragma e preparare un report per ogni pragma sul loro significato
-- Organizzare un archivio con ogni configurazione e relative prestazioni
+- Trovare una configurazione ottimale delle pragma
+- Peparare Report sulle pragma usate
+- Organizzare prestazioni in base alle configurazioni
 
 
 LATENZA SOFTWARE
 
-- Impacchettare per bene il confronto della latenza software
+- Misurare latenza software su ARM Kria + report
+- Report latenza software mio pc
 - Considerare se i risulati ottenuti sono all'interno della std
 - Fare dei grafici per la latenza software
 - Specificare come lavora il parametro dei cicli di clock per la latenza software
