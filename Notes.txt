@@ -1,0 +1,37 @@
+NOTES:
+
+metric: throughput-to-area ratio
+
+many paper on sha3 fpga implementation with comparison result	--> report
+some paper on ascon hash fpga implementation					--> report
+- no paper for hybrid implementation
+
+reason behind a hybrid implementation:
+- area saving --> da contestualizzare
+- protocol agility on the same soc --> myrtus nodes case (how much constrained?) --> singoli acceleratori istanziati singolarmente --> context switching e quindi deployment per i vari container --> uno unico evita CS (da valutare perché no riferimento su CS in termini di tempo deployment #[latenza-energia])
+- nist Post Quantum Cryptography standards --> some use SHA3, some Ascon Hash, crypto coprocessor need both implementation in this transition period
+- side channel certification (one accelerator is better than two)
+- cryptoagility core --> approfondire concetto per nist e fpga --> DONE
+
+cons of hybrid implementation:
+- ipotetically lower throughput --> NOT TRUE
+- if you need the protocols at the same time you cannot use them --> no myrtus case
+
+Hybrid implementation vs sha3+ascon side-by-side:
+
+χ (chi) nonlinear layer is the only gate-expensive component in both permutations. the other operations (rotations, XORs, adding constants) have a very low costs in fpga implementation. sharing the one thing that costs gates, achieve near-optimal area for dual-algorithm support.
+
+ascond can be sandbagged in the hybrid execution --> NOT TRUE
+
+side-by-side advantages:
+higher throughput --> needs to measure it --> NOT TRUE
+possible to use the two algorithms at the same time
+implementations more optimizable by synthesis tools --> a causa della flag "mode"?
+
+//--------------------------------
+
+Il Security Manager decide il livello di sicurezza
+Il nodo deve offrire le primitive di sicurezza
+Il Node Manager decide se pandare una task in HW o in SW
+Sono necessarie implementazioni SW e HW delle primitive di sicurezza
+Gli acceleratori possono essere disponibili in più versioni a seconda dei requisiti (latenza area)
