@@ -1,14 +1,17 @@
 PRIORITÀ
 
-- Test e Caratterizzazione MYRTUS Security Manager
-- Wrapping Acceleratore Ibrido
+- Test e Caratterizzazione (Profilazione) del MYRTUS Security Manager su ARM Kria
 - Test Implementazione Ibrida su ARM Kria
+- Wrapping Acceleratore Ibrido + Test FPGA Kria
+[https://github.com/mdc-suite/AXI-based-driver-applications/tree/main]
+
 
 
 WRITTEN THEORY
 
-- Scrivere paragrafo per motivare e giustificare la tesi. Focus su: Myrtus Security Levels + Crypto-Agility
-	[La Crypto-Agility giustifica un acceleratore ibrido rispetto ad implementazioni standalone?]
+- Motivare e giustificare la tesi. MYRTUS Security Manager + MYRTUS Security Levels + Crypto-Agility.
+[La Crypto-Agility giustifica un acceleratore ibrido rispetto ad implementazioni standalone?]
+
 - Scrivere paragrafo sullo stato dell'arte delle implementazioni di ASCON e SHA3 e su implementazioni IBRIDE
 - Scrivere paragrafo sullo stato dell'arte delle metriche usate
 
@@ -28,12 +31,13 @@ LATENZA SOFTWARE
 - Fare dei grafici per la latenza software
 - Specificare come lavora il parametro dei cicli di clock per la latenza software
 - Provare a considerare il contesto per vedere quanto impatta il contorno sull'esecuzione del solo acceleratore (cpu e ram usage del processo)
-- Comparare le prestazioni allo stato dell'arte degli algoritmi con quelle registrate
+
+
+Comparare le prestazioni allo stato dell'arte degli algoritmi con quelle registrate
 
 
 TEST HARDWARE
 
-- Eseguire la latenza software sull'arm della kria
-- Impacchettare l'acceleratore ed istanziarlo ed eseguirlo sull'fpga
-	[Seguire tutorial Claudio per il wrapping dell'acceleratore]
-	[Interfaccia Axi-Stream da specificare nel topmodule (hash.c ) per il wrapper dell IP]
+- Test e Caratterizzazione (Profilazione) del MYRTUS Security Manager su ARM Kria
+- Posizionamento prestazioni acceleratore ibrido rispetto allo stato dell'arte 
+
