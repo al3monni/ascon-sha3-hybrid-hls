@@ -1,10 +1,8 @@
 PRIORITÀ
-- Test MYRTUS Security Manager
-- Test implementazione software su Kria
 
-
-DONE
-- Analisi paper su Crypto-Agility
+- Test e Caratterizzazione MYRTUS Security Manager
+- Wrapping Acceleratore Ibrido
+- Test Implementazione Ibrida su ARM Kria
 
 
 WRITTEN THEORY
@@ -35,7 +33,6 @@ LATENZA SOFTWARE
 
 TEST HARDWARE
 
-- Ricevere kria
 - Eseguire la latenza software sull'arm della kria
 - Impacchettare l'acceleratore ed istanziarlo ed eseguirlo sull'fpga
 	[Seguire tutorial Claudio per il wrapping dell'acceleratore]
