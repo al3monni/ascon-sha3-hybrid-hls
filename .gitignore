@@ -1,0 +1,45 @@
+# ============================================================================
+#  ascon-sha3-hybrid-hls - .gitignore
+#  Repo root = Vitis Unified workspace (Vitis-HLS_Components)
+#  Tracked per HLS component: sources, hls_config.cfg, vitis-comp.json,
+#  reports/*.rpt, *.hls*_summary and the packaged IP (hash_top.zip).
+# ============================================================================
+
+# --- Vitis IDE workspace metadata (machine-specific) -----------------------
+_ide/
+**/_ide/
+.vitisWorkspace.json
+*.lock
+
+# --- Tool caches / temp ------------------------------------------------------
+.Xil/
+.cache/
+compile_commands.json
+dfx_runtime.txt
+
+# --- HLS work_dir: everything regenerable is ignored -------------------------
+#     (<component>/<component>/hls and logs are rebuilt by C-Sim/Synth/Cosim)
+*/*/hls/
+*/*/logs/
+
+# --- Vivado (future vivado/ folder: track only .tcl, .xdc, exported .xsa/.bit)
+*.jou
+*.str
+*.log
+*.cache/
+*.runs/
+*.sim/
+*.gen/
+*.ip_user_files/
+*.hw/
+
+# --- Compiled objects / binaries ---------------------------------------------
+*.o
+*.d
+*.exe
+*.out
+/build/
+/export/
+
+# --- Vitis IDE report database (binary, regenerable) ---
+**/reports/.db/

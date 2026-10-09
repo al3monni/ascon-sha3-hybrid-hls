@@ -1,0 +1,208 @@
+
+
+================================================================
+== Synthesis Summary Report of 'hash_top'
+================================================================
++ General Information: 
+    * Date:           Fri Jun 26 15:16:22 2026
+    * Version:        2025.1.1 (Build 6214317 on Sep 11 2025)
+    * Project:        Ascon-Test
+    * Solution:       hls (Vivado IP Flow Target)
+    * Product family: zynquplus
+    * Target device:  xck26-sfvc784-2LV-c
+    
+
++ Performance & Resource Estimates: 
+    
+    PS: '+' for module; 'o' for loop; '*' for dataflow
+    +-----------------------+------+------+---------+-----------+----------+---------+------+----------+--------+----+-----------+-----------+-----+
+    |        Modules        | Issue|      |       Latency       | Iteration|         | Trip |          |        |    |           |           |     |
+    |        & Loops        | Type | Slack| (cycles)|    (ns)   |  Latency | Interval| Count| Pipelined|  BRAM  | DSP|     FF    |    LUT    | URAM|
+    +-----------------------+------+------+---------+-----------+----------+---------+------+----------+--------+----+-----------+-----------+-----+
+    |+ hash_top             |     -|  2.55|     6583|  6.583e+04|         -|     6584|     -|        no|  4 (1%)|   -|  792 (~0%)|  4780 (4%)|    -|
+    | + keccakf_asconp12_1  |     -|  4.63|       19|    190.000|         -|       19|     -|        no|       -|   -|  332 (~0%)|  2418 (2%)|    -|
+    |  o rounds_loop        |     -|  7.30|       12|    120.000|         1|        1|    12|       yes|       -|   -|          -|          -|    -|
+    | o init_loop           |     -|  7.30|       25|    250.000|         1|        1|    25|       yes|       -|   -|          -|          -|    -|
+    | o absorbing_loop      |     -|  7.30|     6400|  6.400e+04|        25|        -|   256|        no|       -|   -|          -|          -|    -|
+    | o squeezing_1         |     -|  7.30|        8|     80.000|         1|        1|     8|       yes|       -|   -|          -|          -|    -|
+    | o squeezing_2         |     -|  7.30|        8|     80.000|         1|        1|     8|       yes|       -|   -|          -|          -|    -|
+    | o squeezing_3         |     -|  7.30|        8|     80.000|         1|        1|     8|       yes|       -|   -|          -|          -|    -|
+    | o squeezing_4         |     -|  7.30|        8|     80.000|         1|        1|     8|       yes|       -|   -|          -|          -|    -|
+    +-----------------------+------+------+---------+-----------+----------+---------+------+----------+--------+----+-----------+-----------+-----+
+
+
+================================================================
+== HW Interfaces
+================================================================
+* AP_MEMORY
++---------------+-----------+----------+
+| Port          | Direction | Bitwidth |
++---------------+-----------+----------+
+| in_r_address0 | out       | 8        |
+| in_r_q0       | in        | 8        |
+| md_address0   | out       | 6        |
+| md_d0         | out       | 8        |
++---------------+-----------+----------+
+
+* Other Ports
++-------+---------+-----------+----------+
+| Port  | Mode    | Direction | Bitwidth |
++-------+---------+-----------+----------+
+| inlen | ap_none | in        | 32       |
+| mdlen | ap_none | in        | 32       |
++-------+---------+-----------+----------+
+
+* TOP LEVEL CONTROL
++-----------+------------+-----------------------------------+
+| Interface | Type       | Ports                             |
++-----------+------------+-----------------------------------+
+| ap_clk    | clock      | ap_clk                            |
+| ap_rst    | reset      | ap_rst                            |
+| ap_ctrl   | ap_ctrl_hs | ap_done ap_idle ap_ready ap_start |
++-----------+------------+-----------------------------------+
+
+
+================================================================
+== SW I/O Information
+================================================================
+* Top Function Arguments
++----------+-----------+----------------+
+| Argument | Direction | Datatype       |
++----------+-----------+----------------+
+| in       | in        | unsigned char* |
+| inlen    | in        | int            |
+| md       | out       | unsigned char* |
+| mdlen    | in        | int            |
++----------+-----------+----------------+
+
+* SW-to-HW Mapping
++----------+---------------+---------+----------+
+| Argument | HW Interface  | HW Type | HW Usage |
++----------+---------------+---------+----------+
+| in       | in_r_address0 | port    | offset   |
+| in       | in_r_ce0      | port    |          |
+| in       | in_r_q0       | port    |          |
+| inlen    | inlen         | port    |          |
+| md       | md_address0   | port    | offset   |
+| md       | md_ce0        | port    |          |
+| md       | md_we0        | port    |          |
+| md       | md_d0         | port    |          |
+| mdlen    | mdlen         | port    |          |
++----------+---------------+---------+----------+
+
+
+================================================================
+== Bind Op Report
+================================================================
++----------------------------+-----+--------+-----------------+-----------+--------------------------+---------+
+| Name                       | DSP | Pragma | Variable        | Op        | Impl                     | Latency |
++----------------------------+-----+--------+-----------------+-----------+--------------------------+---------+
+| + hash_top                 | 0   |        |                 |           |                          |         |
+|   icmp_ln199_fu_294_p2     |     |        | icmp_ln199      | seteq     | auto                     | 0       |
+|   add_ln199_fu_300_p2      |     |        | add_ln199       | add       | fabric                   | 0       |
+|   icmp_ln244_fu_341_p2     |     |        | icmp_ln244      | seteq     | auto                     | 0       |
+|   i_10_fu_346_p2           |     |        | i_10            | add       | fabric                   | 0       |
+|   j_2_fu_428_p2            |     |        | j_2             | add       | fabric                   | 0       |
+|   lshr_ln254_fu_391_p2     |     |        | lshr_ln254      | lshr      | auto_pipe                | 0       |
+|   xor_ln254_fu_401_p2      |     |        | xor_ln254       | xor       | auto                     | 0       |
+|   shl_ln254_fu_414_p2      |     |        | shl_ln254       | shl       | auto_pipe                | 0       |
+|   shl_ln254_1_fu_421_p2    |     |        | shl_ln254_1     | shl       | auto_pipe                | 0       |
+|   icmp_ln258_fu_443_p2     |     |        | icmp_ln258      | setlt     | auto                     | 0       |
+|   lshr_ln287_fu_474_p2     |     |        | lshr_ln287      | lshr      | auto_pipe                | 0       |
+|   xor_ln287_fu_488_p2      |     |        | xor_ln287       | xor       | auto                     | 0       |
+|   shl_ln287_fu_519_p2      |     |        | shl_ln287       | shl       | auto_pipe                | 0       |
+|   shl_ln287_1_fu_526_p2    |     |        | shl_ln287_1     | shl       | auto_pipe                | 0       |
+|   icmp_ln297_fu_536_p2     |     |        | icmp_ln297      | seteq     | auto                     | 0       |
+|   add_ln297_fu_542_p2      |     |        | add_ln297       | add       | fabric                   | 0       |
+|   lshr_ln303_fu_569_p2     |     |        | lshr_ln303      | lshr      | auto_pipe                | 0       |
+|   icmp_ln308_fu_593_p2     |     |        | icmp_ln308      | seteq     | auto                     | 0       |
+|   add_ln308_fu_599_p2      |     |        | add_ln308       | add       | fabric                   | 0       |
+|   lshr_ln314_fu_621_p2     |     |        | lshr_ln314      | lshr      | auto_pipe                | 0       |
+|   icmp_ln319_fu_658_p2     |     |        | icmp_ln319      | seteq     | auto                     | 0       |
+|   add_ln319_fu_664_p2      |     |        | add_ln319       | add       | fabric                   | 0       |
+|   lshr_ln325_fu_686_p2     |     |        | lshr_ln325      | lshr      | auto_pipe                | 0       |
+|   icmp_ln330_fu_723_p2     |     |        | icmp_ln330      | seteq     | auto                     | 0       |
+|   add_ln330_fu_729_p2      |     |        | add_ln330       | add       | fabric                   | 0       |
+|   lshr_ln336_fu_751_p2     |     |        | lshr_ln336      | lshr      | auto_pipe                | 0       |
+|  + keccakf_asconp12_1      | 0   |        |                 |           |                          |         |
+|    icmp_ln142_fu_261_p2    |     |        | icmp_ln142      | seteq     | auto                     | 0       |
+|    add_ln142_fu_267_p2     |     |        | add_ln142       | add       | fabric                   | 0       |
+|    sparsemux_25_4_8_1_1_U1 |     |        | zext_ln155_cast | sparsemux | compactencoding_dontcare | 0       |
+|    xor_ln155_fu_348_p2     |     |        | xor_ln155       | xor       | auto                     | 0       |
+|    xor_ln156_fu_354_p2     |     |        | xor_ln156       | xor       | auto                     | 0       |
+|    xor_ln157_fu_360_p2     |     |        | xor_ln157       | xor       | auto                     | 0       |
+|    xor_ln158_fu_366_p2     |     |        | xor_ln158       | xor       | auto                     | 0       |
+|    xor_ln55_fu_372_p2      |     |        | xor_ln55        | xor       | auto                     | 0       |
+|    and_ln55_fu_378_p2      |     |        | and_ln55        | and       | auto                     | 0       |
+|    xor_ln55_1_fu_384_p2    |     |        | xor_ln55_1      | xor       | auto                     | 0       |
+|    xor_ln55_2_fu_390_p2    |     |        | xor_ln55_2      | xor       | auto                     | 0       |
+|    and_ln55_1_fu_396_p2    |     |        | and_ln55_1      | and       | auto                     | 0       |
+|    xor_ln55_3_fu_402_p2    |     |        | xor_ln55_3      | xor       | auto                     | 0       |
+|    xor_ln55_4_fu_408_p2    |     |        | xor_ln55_4      | xor       | auto                     | 0       |
+|    and_ln55_2_fu_414_p2    |     |        | and_ln55_2      | and       | auto                     | 0       |
+|    xor_ln55_5_fu_420_p2    |     |        | xor_ln55_5      | xor       | auto                     | 0       |
+|    xor_ln167_fu_426_p2     |     |        | xor_ln167       | xor       | auto                     | 0       |
+|    and_ln167_fu_432_p2     |     |        | and_ln167       | and       | auto                     | 0       |
+|    xor_ln167_1_fu_438_p2   |     |        | xor_ln167_1     | xor       | auto                     | 0       |
+|    xor_ln167_2_fu_444_p2   |     |        | xor_ln167_2     | xor       | auto                     | 0       |
+|    xor_ln168_fu_450_p2     |     |        | xor_ln168       | xor       | auto                     | 0       |
+|    xor_ln169_fu_456_p2     |     |        | xor_ln169       | xor       | auto                     | 0       |
+|    and_ln169_fu_462_p2     |     |        | and_ln169       | and       | auto                     | 0       |
+|    xor_ln169_1_fu_468_p2   |     |        | xor_ln169_1     | xor       | auto                     | 0       |
+|    xor_ln169_2_fu_474_p2   |     |        | xor_ln169_2     | xor       | auto                     | 0       |
+|    xor_ln170_fu_480_p2     |     |        | xor_ln170       | xor       | auto                     | 0       |
+|    xor_ln95_fu_530_p2      |     |        | xor_ln95        | xor       | auto                     | 0       |
+|    xor_ln95_1_fu_536_p2    |     |        | xor_ln95_1      | xor       | auto                     | 0       |
+|    xor_ln96_fu_586_p2      |     |        | xor_ln96        | xor       | auto                     | 0       |
+|    xor_ln96_1_fu_592_p2    |     |        | xor_ln96_1      | xor       | auto                     | 0       |
+|    xor_ln97_fu_642_p2      |     |        | xor_ln97        | xor       | auto                     | 0       |
+|    xor_ln97_1_fu_648_p2    |     |        | xor_ln97_1      | xor       | auto                     | 0       |
+|    xor_ln98_fu_698_p2      |     |        | xor_ln98        | xor       | auto                     | 0       |
+|    xor_ln98_1_fu_704_p2    |     |        | xor_ln98_1      | xor       | auto                     | 0       |
+|    xor_ln99_fu_754_p2      |     |        | xor_ln99        | xor       | auto                     | 0       |
+|    xor_ln99_1_fu_760_p2    |     |        | xor_ln99_1      | xor       | auto                     | 0       |
++----------------------------+-----+--------+-----------------+-----------+--------------------------+---------+
+
+
+================================================================
+== Storage Report
+================================================================
++------------+---------------+------+------+------+--------+----------+------+---------+------------------+
+| Name       | Usage         | Type | BRAM | URAM | Pragma | Variable | Impl | Latency | Bitwidth, Depth, |
+|            |               |      |      |      |        |          |      |         | Banks            |
++------------+---------------+------+------+------+--------+----------+------+---------+------------------+
+| + hash_top |               |      | 4    | 0    |        |          |      |         |                  |
+|   H_i_U    | ram_t2p array |      | 4    |      |        | H_i      | auto | 1       | 64, 27, 1        |
++------------+---------------+------+------+------+--------+----------+------+---------+------------------+
+
+
+================================================================
+== Pragma Report
+================================================================
+* Valid Pragma Syntax
++-----------------+------------------------------------------+---------------------------------------------+
+| Type            | Options                                  | Location                                    |
++-----------------+------------------------------------------+---------------------------------------------+
+| INLINE          |                                          | hash.c:12 in chi                            |
+| ARRAY_PARTITION | variable=bc type=complete dim=1          | hash.c:20 in chi, bc                        |
+| PIPELINE        | ii=1                                     | hash.c:42 in chi                            |
+| PIPELINE        | ii=1                                     | hash.c:52 in chi                            |
+| INLINE          |                                          | hash.c:64 in diffusion                      |
+| ARRAY_PARTITION | variable=bc type=complete dim=1          | hash.c:73 in diffusion, bc                  |
+| PIPELINE        | ii=1                                     | hash.c:88 in diffusion                      |
+| INLINE          | off                                      | hash.c:118 in keccakf_asconp12              |
+| ARRAY_PARTITION | variable=asconp_rndc type=complete dim=1 | hash.c:132 in keccakf_asconp12, asconp_rndc |
+| PIPELINE        | ii=1                                     | hash.c:150 in keccakf_asconp12              |
+| INLINE          |                                          | hash.c:192 in hash_init                     |
+| PIPELINE        | ii=1                                     | hash.c:201 in hash_init                     |
+| INLINE          |                                          | hash.c:237 in hash_update                   |
+| LOOP_TRIPCOUNT  | min=0 max=256                            | hash.c:250 in hash_update                   |
+| INLINE          |                                          | hash.c:281 in hash_final                    |
+| PIPELINE        | ii=1                                     | hash.c:301 in hash_final                    |
+| PIPELINE        | ii=1                                     | hash.c:312 in hash_final                    |
+| PIPELINE        | ii=1                                     | hash.c:323 in hash_final                    |
+| PIPELINE        | ii=1                                     | hash.c:334 in hash_final                    |
+| INLINE          |                                          | hash.c:352 in hash                          |
++-----------------+------------------------------------------+---------------------------------------------+
+
+

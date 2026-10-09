@@ -1,0 +1,269 @@
+<ENTRY>
+{
+ "thisFile": "C:/Users\\monni\\Desktop\\Vitis-HLS_Components\\Hybrid-Test\\Hybrid-Test\\Hybrid-Test.hlsrun_impl_summary",
+ "connectId": "",
+ "serverToken": "",
+ "timestamp": "0"
+}
+</ENTRY>
+<ENTRY>
+{
+ "type": "ET_CmdStep",
+ "dateTimestamp": "06/25/26 23:44:21",
+ "timestampMillis": "1782423861197",
+ "buildStep": {
+  "cmdId": "2caf74d9-eea0-4690-84c4-e9899d2c7346",
+  "name": "vitis-run",
+  "logFile": "C:/Users\\monni\\Desktop\\Vitis-HLS_Components\\Hybrid-Test\\Hybrid-Test\\logs\\Hybrid-Test.steps.log",
+  "commandLine": "C:/Xilinx/2025.1.1/Vitis/bin/unwrapped/win64.o/vitis-run.exe  --mode hls --impl --config C:\\Users\\monni\\Desktop\\Vitis-HLS_Components\\Hybrid-Test\\hls_config.cfg --work_dir Hybrid-Test ",
+  "args": [
+   "--mode",
+   "hls",
+   "--impl",
+   "--config",
+   "C:\\Users\\monni\\Desktop\\Vitis-HLS_Components\\Hybrid-Test\\hls_config.cfg",
+   "--work_dir",
+   "Hybrid-Test"
+  ],
+  "iniFiles": [],
+  "cwd": "C:\\Users\\monni\\Desktop\\Vitis-HLS_Components\\Hybrid-Test"
+ }
+}
+</ENTRY>
+<ENTRY>
+{
+ "type": "ET_Status",
+ "dateTimestamp": "06/25/26 23:44:21",
+ "timestampMillis": "1782423861197",
+ "status": {
+  "cmdId": "2caf74d9-eea0-4690-84c4-e9899d2c7346",
+  "state": "CS_RUNNING"
+ }
+}
+</ENTRY>
+<ENTRY>
+{
+ "type": "ET_FlowMetaData",
+ "dateTimestamp": "06/25/26 23:44:25",
+ "timestampMillis": "1782423865018",
+ "buildSummary": {
+  "hardwarePlatform": "",
+  "hardwareDsa": "",
+  "platformDirectory": "",
+  "runtime": "",
+  "systemConfig": "",
+  "flow": "BF_RUN",
+  "target": "TT_HLS_IMPL",
+  "kernels": [
+   {
+    "base": {
+     "type": "KERNEL",
+     "name": "hash_top",
+     "file": "",
+     "reports": [],
+     "uuid": ""
+    },
+    "sources": [
+     "C:/Users\\monni\\Desktop\\Vitis-HLS_Components\\Hybrid-Test\\hash.c",
+     "C:/Users\\monni\\Desktop\\Vitis-HLS_Components\\Hybrid-Test\\hash.h"
+    ],
+    "psSources": [],
+    "cuNames": [],
+    "type": "HLS",
+    "frequency": 0,
+    "freqUnits": ""
+   }
+  ],
+  "toolVersion": "2025.1"
+ }
+}
+</ENTRY>
+<ENTRY>
+{
+ "type": "ET_SubCmdStep",
+ "dateTimestamp": "06/25/26 23:44:25",
+ "timestampMillis": "1782423865019",
+ "buildStep": {
+  "cmdId": "f9821402-08a3-4121-88ed-f24d1631b8ff",
+  "name": "",
+  "logFile": "C:/Users\\monni\\Desktop\\Vitis-HLS_Components\\Hybrid-Test\\Hybrid-Test\\hls\\hls.log",
+  "commandLine": "",
+  "args": [],
+  "iniFiles": [],
+  "cwd": "C:\\Users\\monni\\Desktop\\Vitis-HLS_Components\\Hybrid-Test"
+ }
+}
+</ENTRY>
+<ENTRY>
+{
+ "type": "ET_Status",
+ "dateTimestamp": "06/25/26 23:44:25",
+ "timestampMillis": "1782423865020",
+ "status": {
+  "cmdId": "f9821402-08a3-4121-88ed-f24d1631b8ff",
+  "state": "CS_RUNNING"
+ }
+}
+</ENTRY>
+<ENTRY>
+{
+ "type": "ET_Report",
+ "dateTimestamp": "06/25/26 23:44:25",
+ "timestampMillis": "1782423865022",
+ "report": {
+  "path": "C:/Users\\monni\\Desktop\\Vitis-HLS_Components\\Hybrid-Test\\Hybrid-Test\\hls\\impl\\verilog",
+  "name": "",
+  "fileType": "DIR",
+  "reportType": "HLS_RTL_SYNTHESIS",
+  "cmdId": ""
+ }
+}
+</ENTRY>
+<ENTRY>
+{
+ "type": "ET_Report",
+ "dateTimestamp": "06/25/26 23:44:25",
+ "timestampMillis": "1782423865022",
+ "report": {
+  "path": "C:/Users\\monni\\Desktop\\Vitis-HLS_Components\\Hybrid-Test\\Hybrid-Test\\hls\\impl\\report\\verilog\\export_syn.rpt",
+  "name": "",
+  "fileType": "TEXT",
+  "reportType": "HLS_RTL_SYNTHESIS",
+  "cmdId": ""
+ }
+}
+</ENTRY>
+<ENTRY>
+{
+ "type": "ET_Report",
+ "dateTimestamp": "06/25/26 23:44:25",
+ "timestampMillis": "1782423865023",
+ "report": {
+  "path": "C:/Users\\monni\\Desktop\\Vitis-HLS_Components\\Hybrid-Test\\Hybrid-Test\\hls\\impl\\report\\verilog\\export_syn.xml",
+  "name": "",
+  "fileType": "XML",
+  "reportType": "HLS_RTL_SYNTHESIS",
+  "cmdId": ""
+ }
+}
+</ENTRY>
+<ENTRY>
+{
+ "type": "ET_Report",
+ "dateTimestamp": "06/25/26 23:44:25",
+ "timestampMillis": "1782423865023",
+ "report": {
+  "path": "C:/Users\\monni\\Desktop\\Vitis-HLS_Components\\Hybrid-Test\\Hybrid-Test\\hls\\impl\\verilog",
+  "name": "",
+  "fileType": "DIR",
+  "reportType": "HLS_PLACE_AND_ROUTE",
+  "cmdId": ""
+ }
+}
+</ENTRY>
+<ENTRY>
+{
+ "type": "ET_Report",
+ "dateTimestamp": "06/25/26 23:44:25",
+ "timestampMillis": "1782423865024",
+ "report": {
+  "path": "C:/Users\\monni\\Desktop\\Vitis-HLS_Components\\Hybrid-Test\\Hybrid-Test\\hls\\impl\\report\\verilog\\export_impl.rpt",
+  "name": "",
+  "fileType": "TEXT",
+  "reportType": "HLS_PLACE_AND_ROUTE",
+  "cmdId": ""
+ }
+}
+</ENTRY>
+<ENTRY>
+{
+ "type": "ET_Report",
+ "dateTimestamp": "06/25/26 23:44:25",
+ "timestampMillis": "1782423865024",
+ "report": {
+  "path": "C:/Users\\monni\\Desktop\\Vitis-HLS_Components\\Hybrid-Test\\Hybrid-Test\\hls\\impl\\report\\verilog\\export_impl.xml",
+  "name": "",
+  "fileType": "XML",
+  "reportType": "HLS_PLACE_AND_ROUTE",
+  "cmdId": ""
+ }
+}
+</ENTRY>
+<ENTRY>
+{
+ "type": "ET_Report",
+ "dateTimestamp": "06/25/26 23:50:41",
+ "timestampMillis": "1782424241795",
+ "report": {
+  "path": "C:/Users\\monni\\Desktop\\Vitis-HLS_Components\\Hybrid-Test\\Hybrid-Test\\hls",
+  "name": "",
+  "fileType": "DIR",
+  "reportType": "HLS_RTL_SYNTHESIS",
+  "cmdId": ""
+ }
+}
+</ENTRY>
+<ENTRY>
+{
+ "type": "ET_Report",
+ "dateTimestamp": "06/25/26 23:50:41",
+ "timestampMillis": "1782424241795",
+ "report": {
+  "path": "C:/Users\\monni\\Desktop\\Vitis-HLS_Components\\Hybrid-Test\\Hybrid-Test\\hls",
+  "name": "",
+  "fileType": "DIR",
+  "reportType": "HLS_PLACE_AND_ROUTE",
+  "cmdId": ""
+ }
+}
+</ENTRY>
+<ENTRY>
+{
+ "type": "ET_Status",
+ "dateTimestamp": "06/25/26 23:50:41",
+ "timestampMillis": "1782424241796",
+ "status": {
+  "cmdId": "f9821402-08a3-4121-88ed-f24d1631b8ff",
+  "state": "CS_PASSED"
+ }
+}
+</ENTRY>
+<ENTRY>
+{
+ "type": "ET_Status",
+ "dateTimestamp": "06/25/26 23:50:42",
+ "timestampMillis": "1782424242011",
+ "status": {
+  "cmdId": "2caf74d9-eea0-4690-84c4-e9899d2c7346",
+  "state": "CS_PASSED"
+ }
+}
+</ENTRY>
+<ENTRY>
+{
+ "type": "ET_Report",
+ "dateTimestamp": "06/25/26 23:50:42",
+ "timestampMillis": "1782424242016",
+ "report": {
+  "path": "",
+  "name": "",
+  "fileType": "HTML",
+  "reportType": "GLOBAL_RULECHECK_GUIDANCE",
+  "cmdId": ""
+ }
+}
+</ENTRY>
+<ENTRY>
+{
+ "type": "ET_Report",
+ "dateTimestamp": "06/25/26 23:50:42",
+ "timestampMillis": "1782424242016",
+ "report": {
+  "path": "",
+  "name": "",
+  "fileType": "BINARY_PROTOBUF",
+  "reportType": "GLOBAL_RULECHECK_GUIDANCE",
+  "cmdId": ""
+ }
+}
+</ENTRY>

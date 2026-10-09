@@ -1,0 +1,227 @@
+<ENTRY>
+{
+ "thisFile": "C:/Users\\monni\\Desktop\\Vitis-HLS_Components\\Sha-Test\\Sha-Test\\Sha-Test.hlsrun_cosim_summary",
+ "connectId": "",
+ "serverToken": "",
+ "timestamp": "0"
+}
+</ENTRY>
+<ENTRY>
+{
+ "type": "ET_CmdStep",
+ "dateTimestamp": "06/26/26 14:27:00",
+ "timestampMillis": "1782476820263",
+ "buildStep": {
+  "cmdId": "7196f168-fba1-43b4-a843-e85b70df43b2",
+  "name": "vitis-run",
+  "logFile": "C:/Users\\monni\\Desktop\\Vitis-HLS_Components\\Sha-Test\\Sha-Test\\logs\\Sha-Test.steps.log",
+  "commandLine": "C:/Xilinx/2025.1.1/Vitis/bin/unwrapped/win64.o/vitis-run.exe  --mode hls --cosim --config C:\\Users\\monni\\Desktop\\Vitis-HLS_Components\\Sha-Test\\hls_config.cfg --work_dir Sha-Test ",
+  "args": [
+   "--mode",
+   "hls",
+   "--cosim",
+   "--config",
+   "C:\\Users\\monni\\Desktop\\Vitis-HLS_Components\\Sha-Test\\hls_config.cfg",
+   "--work_dir",
+   "Sha-Test"
+  ],
+  "iniFiles": [],
+  "cwd": "C:\\Users\\monni\\Desktop\\Vitis-HLS_Components\\Sha-Test"
+ }
+}
+</ENTRY>
+<ENTRY>
+{
+ "type": "ET_Status",
+ "dateTimestamp": "06/26/26 14:27:00",
+ "timestampMillis": "1782476820263",
+ "status": {
+  "cmdId": "7196f168-fba1-43b4-a843-e85b70df43b2",
+  "state": "CS_RUNNING"
+ }
+}
+</ENTRY>
+<ENTRY>
+{
+ "type": "ET_FlowMetaData",
+ "dateTimestamp": "06/26/26 14:27:04",
+ "timestampMillis": "1782476824152",
+ "buildSummary": {
+  "hardwarePlatform": "",
+  "hardwareDsa": "",
+  "platformDirectory": "",
+  "runtime": "",
+  "systemConfig": "",
+  "flow": "BF_RUN",
+  "target": "TT_HLS_RTL_COSIM",
+  "kernels": [
+   {
+    "base": {
+     "type": "KERNEL",
+     "name": "hash_top",
+     "file": "",
+     "reports": [],
+     "uuid": ""
+    },
+    "sources": [
+     "C:/Users\\monni\\Desktop\\Vitis-HLS_Components\\Sha-Test\\hash.c",
+     "C:/Users\\monni\\Desktop\\Vitis-HLS_Components\\Sha-Test\\hash.h"
+    ],
+    "psSources": [],
+    "cuNames": [],
+    "type": "HLS",
+    "frequency": 0,
+    "freqUnits": ""
+   }
+  ],
+  "toolVersion": "2025.1"
+ }
+}
+</ENTRY>
+<ENTRY>
+{
+ "type": "ET_SubCmdStep",
+ "dateTimestamp": "06/26/26 14:27:04",
+ "timestampMillis": "1782476824153",
+ "buildStep": {
+  "cmdId": "61addf95-d0aa-40de-853a-c2856fe0689b",
+  "name": "",
+  "logFile": "C:/Users\\monni\\Desktop\\Vitis-HLS_Components\\Sha-Test\\Sha-Test\\hls\\hls.log",
+  "commandLine": "",
+  "args": [],
+  "iniFiles": [],
+  "cwd": "C:\\Users\\monni\\Desktop\\Vitis-HLS_Components\\Sha-Test"
+ }
+}
+</ENTRY>
+<ENTRY>
+{
+ "type": "ET_Status",
+ "dateTimestamp": "06/26/26 14:27:04",
+ "timestampMillis": "1782476824154",
+ "status": {
+  "cmdId": "61addf95-d0aa-40de-853a-c2856fe0689b",
+  "state": "CS_RUNNING"
+ }
+}
+</ENTRY>
+<ENTRY>
+{
+ "type": "ET_Report",
+ "dateTimestamp": "06/26/26 14:27:04",
+ "timestampMillis": "1782476824154",
+ "report": {
+  "path": "C:/Users\\monni\\Desktop\\Vitis-HLS_Components\\Sha-Test\\Sha-Test\\hls\\sim\\report\\hash_top_cosim.rpt",
+  "name": "",
+  "fileType": "TEXT",
+  "reportType": "HLS_COSIMULATION",
+  "cmdId": ""
+ }
+}
+</ENTRY>
+<ENTRY>
+{
+ "type": "ET_Report",
+ "dateTimestamp": "06/26/26 14:27:04",
+ "timestampMillis": "1782476824155",
+ "report": {
+  "path": "C:/Users\\monni\\Desktop\\Vitis-HLS_Components\\Sha-Test\\Sha-Test\\hls",
+  "name": "",
+  "fileType": "DIR",
+  "reportType": "HLS_DATAFLOW",
+  "cmdId": ""
+ }
+}
+</ENTRY>
+<ENTRY>
+{
+ "type": "ET_Report",
+ "dateTimestamp": "06/26/26 14:27:04",
+ "timestampMillis": "1782476824155",
+ "report": {
+  "path": "C:/Users\\monni\\Desktop\\Vitis-HLS_Components\\Sha-Test\\Sha-Test\\hls",
+  "name": "",
+  "fileType": "DIR",
+  "reportType": "HLS_FUNCTION_CALL_GRAPH_COSIM",
+  "cmdId": ""
+ }
+}
+</ENTRY>
+<ENTRY>
+{
+ "type": "ET_Report",
+ "dateTimestamp": "06/26/26 14:27:04",
+ "timestampMillis": "1782476824155",
+ "report": {
+  "path": "C:/Users\\monni\\Desktop\\Vitis-HLS_Components\\Sha-Test\\Sha-Test\\hls",
+  "name": "",
+  "fileType": "DIR",
+  "reportType": "HLS_TIMELINE_TRACE",
+  "cmdId": ""
+ }
+}
+</ENTRY>
+<ENTRY>
+{
+ "type": "ET_Report",
+ "dateTimestamp": "06/26/26 14:27:04",
+ "timestampMillis": "1782476824156",
+ "report": {
+  "path": "C:/Users\\monni\\Desktop\\Vitis-HLS_Components\\Sha-Test\\Sha-Test\\hls",
+  "name": "",
+  "fileType": "DIR",
+  "reportType": "HLS_WAVE",
+  "cmdId": ""
+ }
+}
+</ENTRY>
+<ENTRY>
+{
+ "type": "ET_Status",
+ "dateTimestamp": "06/26/26 14:28:04",
+ "timestampMillis": "1782476884851",
+ "status": {
+  "cmdId": "61addf95-d0aa-40de-853a-c2856fe0689b",
+  "state": "CS_PASSED"
+ }
+}
+</ENTRY>
+<ENTRY>
+{
+ "type": "ET_Status",
+ "dateTimestamp": "06/26/26 14:28:04",
+ "timestampMillis": "1782476884925",
+ "status": {
+  "cmdId": "7196f168-fba1-43b4-a843-e85b70df43b2",
+  "state": "CS_PASSED"
+ }
+}
+</ENTRY>
+<ENTRY>
+{
+ "type": "ET_Report",
+ "dateTimestamp": "06/26/26 14:28:04",
+ "timestampMillis": "1782476884926",
+ "report": {
+  "path": "",
+  "name": "",
+  "fileType": "HTML",
+  "reportType": "GLOBAL_RULECHECK_GUIDANCE",
+  "cmdId": ""
+ }
+}
+</ENTRY>
+<ENTRY>
+{
+ "type": "ET_Report",
+ "dateTimestamp": "06/26/26 14:28:04",
+ "timestampMillis": "1782476884926",
+ "report": {
+  "path": "",
+  "name": "",
+  "fileType": "BINARY_PROTOBUF",
+  "reportType": "GLOBAL_RULECHECK_GUIDANCE",
+  "cmdId": ""
+ }
+}
+</ENTRY>

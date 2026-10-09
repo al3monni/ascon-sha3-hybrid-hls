@@ -1,0 +1,14 @@
+# Normalize text files to LF in the repository (Windows/WSL mixed setup)
+* text=auto
+
+# Scripts executed in WSL/Linux must keep LF in the working tree
+*.sh  text eol=lf
+
+# Binary assets
+*.pdf  binary
+*.zip  binary
+*.pptx binary
+*.webp binary
+*.png  binary
+*.bit  binary
+*.xsa  binary
