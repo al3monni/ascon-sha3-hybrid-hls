@@ -11,7 +11,7 @@
  */
 
 #include "../bench_common.h"
-#include "hash.h"
+#include "hash.h"          /* da ../../Sha-Test (fonte unica, via -I) */
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -71,7 +71,8 @@ static uint8_t hash_buf[64];
 static uint8_t expected_buf[64];
 
 static uint64_t *wall_ns = NULL;
-static uint64_t *cycles  = NULL;
+static uint64_t *ticks_buf = NULL;   /* tick per chiamata    */
+static bench_pmu_t pmu;              /* contatori hardware   */
 
 static int verify_kat(const bench_case_t *bc, int msg_len) {
     int exp_len = bench_readhex(expected_buf, bc->expected_hex, sizeof(expected_buf));
@@ -93,33 +94,31 @@ static void measure_case(const bench_case_t *bc, int warmup, int iters, FILE *fo
     uint64_t seed = 0x9E3779B97F4A7C15ULL ^ (uint64_t)bc->syn_size;
     bench_fill_synthetic(msg_buf, msg_len, seed);
 
-    for (int i = 0; i < warmup; i++)
-        hash(msg_buf, (size_t)msg_len, hash_buf, bc->hash_len);
+    /* Misura (fasi A e B, vedi bench_common.h). CALL e' la chiamata diretta a hash(). */
+    bench_case_result_t res;
+    BENCH_MEASURE(&res, &pmu, warmup, iters, wall_ns, ticks_buf,
+                  hash(msg_buf, (size_t)msg_len, hash_buf, bc->hash_len));
 
-    for (int i = 0; i < iters; i++) {
-        uint64_t c0 = bench_now_cycles();
-        uint64_t t0 = bench_now_ns();
+    /* Scrivo la riga nel file dati per lo script bash. */
+    bench_write_row(fout, IMPL_NAME, bc->algo, msg_len, &res);
 
-        hash(msg_buf, (size_t)msg_len, hash_buf, bc->hash_len);
-
-        uint64_t t1 = bench_now_ns();
-        uint64_t c1 = bench_now_cycles();
-
-        wall_ns[i] = t1 - t0;
-        cycles [i] = c1 - c0;
-    }
-
-    bench_stats_t ns_stats, cy_stats;
-    bench_compute_stats(wall_ns, iters, &ns_stats);
-    bench_compute_stats(cycles,  iters, &cy_stats);
-
-    bench_write_row(fout, IMPL_NAME, bc->algo, msg_len, &ns_stats, &cy_stats);
-
-    printf("  %-9s %5d B : mean %9.1f ns | %9.1f cicli\n",
-           bc->algo, msg_len, ns_stats.mean, cy_stats.mean);
+    /* Stampa di cortesia a video, per seguire l'avanzamento. */
+    if (res.pmu_ok)
+        printf("  %-9s %5d B : mean %9.1f ns | %10.1f cicli core | IPC %.2f\n",
+               bc->algo, msg_len, res.ns.mean, res.cycles,
+               res.cycles > 0 ? res.instructions / res.cycles : 0.0);
+    else
+        printf("  %-9s %5d B : mean %9.1f ns | %10.1f tick (PMU n/a)\n",
+               bc->algo, msg_len, res.ns.mean, res.ticks.mean);
 }
 
 int main(int argc, char **argv) {
+    /* --sizeof: stampa la dimensione del contesto dell'hash (footprint) ed esce */
+    if (argc == 2 && strcmp(argv[1], "--sizeof") == 0) {
+        printf("%zu\n", sizeof(hash_ctx_t));
+        return 0;
+    }
+
     if (argc < 2) {
         fprintf(stderr, "Uso: %s <file_dati_output> [iterazioni] [warmup]\n", argv[0]);
         return 1;
@@ -139,8 +138,8 @@ int main(int argc, char **argv) {
     }
 
     wall_ns = malloc((size_t)iters * sizeof(uint64_t));
-    cycles  = malloc((size_t)iters * sizeof(uint64_t));
-    if (!wall_ns || !cycles) {
+    ticks_buf = malloc((size_t)iters * sizeof(uint64_t));
+    if (!wall_ns || !ticks_buf) {
         fprintf(stderr, "Memoria insufficiente per %d iterazioni\n", iters);
         return 1;
     }
@@ -150,6 +149,10 @@ int main(int argc, char **argv) {
         fprintf(stderr, "Impossibile aprire il file dati '%s'\n", out_path);
         return 1;
     }
+
+    /* --- Contatori hardware (se disponibili) e calibrazione del timer --- */
+    bench_pmu_open(&pmu);
+    bench_write_calibration(fout, &pmu);
 
     printf("\n===== Implementazione: %s  (iters=%d, warmup=%d) =====\n",
            IMPL_NAME, iters, warmup);
@@ -167,7 +170,7 @@ int main(int argc, char **argv) {
 
     fclose(fout);
     free(wall_ns);
-    free(cycles);
+    free(ticks_buf);
 
     printf("Fatto. Misure scritte in: %s\n", out_path);
     return 0;

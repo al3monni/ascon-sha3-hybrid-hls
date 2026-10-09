@@ -9,12 +9,14 @@
  *          - una fase di WARMUP (iterazioni scartate, per stabilizzare cache
  *            e branch predictor)
  *          - una fase di MISURA (N iterazioni cronometrate)
- *      registrando per ogni iterazione sia il tempo (ns) sia i cicli di CPU.
+ *      registrando per ogni iterazione tempo (ns) e tick (fase A), poi un
+ *      batch con i contatori hardware cicli/istruzioni (fase B, vedi bench_common.h).
  *   3. Calcola le statistiche RAW (media, mediana, dev. std., min, max) e
  *      scrive una riga di risultati nel file dati passato come argomento.
  *
  * Uso:
  *   ./bench <file_dati_output> [iterazioni] [warmup]
+ *   ./bench --sizeof            (stampa sizeof(hash_ctx_t) ed esce)
  *
  *   <file_dati_output>  percorso del file su cui scrivere le righe di misura
  *   [iterazioni]        default 100000
@@ -25,7 +27,7 @@
  */
 
 #include "../bench_common.h"   /* infrastruttura di misura condivisa */
-#include "hash.h"              /* l'implementazione da testare       */
+#include "hash.h"              /* da ../../Hybrid-Test (fonte unica, via -I) */
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -110,7 +112,8 @@ static uint8_t expected_buf[64];
 
 /* Array delle misure: una entry per iterazione, allocati in main(). */
 static uint64_t *wall_ns  = NULL;   /* tempi in nanosecondi */
-static uint64_t *cycles   = NULL;   /* cicli di CPU         */
+static uint64_t *ticks_buf = NULL;   /* tick per chiamata    */
+static bench_pmu_t pmu;              /* contatori hardware   */
 
 /* ------------------------------------------------------------------ */
 /*  Verifica di correttezza su un vettore KAT                         */
@@ -142,35 +145,22 @@ static void measure_case(const bench_case_t *bc, int warmup, int iters, FILE *fo
     uint64_t seed = 0x9E3779B97F4A7C15ULL ^ (uint64_t)bc->syn_size;
     bench_fill_synthetic(msg_buf, msg_len, seed);
 
-    /* WARMUP: stesse chiamate, ma i tempi NON vengono registrati. */
-    for (int i = 0; i < warmup; i++)
-        hash(msg_buf, (size_t)msg_len, hash_buf, bc->hash_len, bc->mode);
-
-    /* MISURA: cronometro ogni singola chiamata (tempo e cicli). */
-    for (int i = 0; i < iters; i++) {
-        uint64_t c0 = bench_now_cycles();
-        uint64_t t0 = bench_now_ns();
-
-        hash(msg_buf, (size_t)msg_len, hash_buf, bc->hash_len, bc->mode);
-
-        uint64_t t1 = bench_now_ns();
-        uint64_t c1 = bench_now_cycles();
-
-        wall_ns[i] = t1 - t0;
-        cycles [i] = c1 - c0;
-    }
-
-    /* Calcolo le statistiche (le funzioni ordinano gli array sul posto). */
-    bench_stats_t ns_stats, cy_stats;
-    bench_compute_stats(wall_ns, iters, &ns_stats);
-    bench_compute_stats(cycles,  iters, &cy_stats);
+    /* Misura (fasi A e B, vedi bench_common.h). CALL e' la chiamata diretta a hash(). */
+    bench_case_result_t res;
+    BENCH_MEASURE(&res, &pmu, warmup, iters, wall_ns, ticks_buf,
+                  hash(msg_buf, (size_t)msg_len, hash_buf, bc->hash_len, bc->mode));
 
     /* Scrivo la riga nel file dati per lo script bash. */
-    bench_write_row(fout, IMPL_NAME, bc->algo, msg_len, &ns_stats, &cy_stats);
+    bench_write_row(fout, IMPL_NAME, bc->algo, msg_len, &res);
 
     /* Stampa di cortesia a video, per seguire l'avanzamento. */
-    printf("  %-9s %5d B : mean %9.1f ns | %9.1f cicli\n",
-           bc->algo, msg_len, ns_stats.mean, cy_stats.mean);
+    if (res.pmu_ok)
+        printf("  %-9s %5d B : mean %9.1f ns | %10.1f cicli core | IPC %.2f\n",
+               bc->algo, msg_len, res.ns.mean, res.cycles,
+               res.cycles > 0 ? res.instructions / res.cycles : 0.0);
+    else
+        printf("  %-9s %5d B : mean %9.1f ns | %10.1f tick (PMU n/a)\n",
+               bc->algo, msg_len, res.ns.mean, res.ticks.mean);
 }
 
 /* ------------------------------------------------------------------ */
@@ -179,6 +169,12 @@ static void measure_case(const bench_case_t *bc, int warmup, int iters, FILE *fo
 int main(int argc, char **argv) {
 
     /* --- Argomenti da riga di comando --- */
+    /* --sizeof: stampa la dimensione del contesto dell'hash (footprint) ed esce */
+    if (argc == 2 && strcmp(argv[1], "--sizeof") == 0) {
+        printf("%zu\n", sizeof(hash_ctx_t));
+        return 0;
+    }
+
     if (argc < 2) {
         fprintf(stderr, "Uso: %s <file_dati_output> [iterazioni] [warmup]\n", argv[0]);
         return 1;
@@ -199,8 +195,8 @@ int main(int argc, char **argv) {
 
     /* --- Alloco gli array delle misure --- */
     wall_ns = malloc((size_t)iters * sizeof(uint64_t));
-    cycles  = malloc((size_t)iters * sizeof(uint64_t));
-    if (!wall_ns || !cycles) {
+    ticks_buf = malloc((size_t)iters * sizeof(uint64_t));
+    if (!wall_ns || !ticks_buf) {
         fprintf(stderr, "Memoria insufficiente per %d iterazioni\n", iters);
         return 1;
     }
@@ -211,6 +207,10 @@ int main(int argc, char **argv) {
         fprintf(stderr, "Impossibile aprire il file dati '%s'\n", out_path);
         return 1;
     }
+
+    /* --- Contatori hardware (se disponibili) e calibrazione del timer --- */
+    bench_pmu_open(&pmu);
+    bench_write_calibration(fout, &pmu);
 
     printf("\n===== Implementazione: %s  (iters=%d, warmup=%d) =====\n",
            IMPL_NAME, iters, warmup);
@@ -232,7 +232,7 @@ int main(int argc, char **argv) {
 
     fclose(fout);
     free(wall_ns);
-    free(cycles);
+    free(ticks_buf);
 
     printf("Fatto. Misure scritte in: %s\n", out_path);
     return 0;

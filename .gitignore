@@ -45,5 +45,5 @@ dfx_runtime.txt
 **/reports/.db/
 
 # --- Software benchmark: compiled binaries and temporary files ---
-benchmarks/**/bench
-benchmarks/**/results/
+benchmarks/**/build/
+benchmarks/**/results/**/.*

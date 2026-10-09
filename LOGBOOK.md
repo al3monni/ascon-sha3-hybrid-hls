@@ -21,6 +21,7 @@ Storico delle modifiche al codice e alla configurazione, dalla base di partenza 
 | [LOG-004](#log-004--flusso-vitis-hls-completo) | 2026-06-25/26 | Flusso Vitis HLS completo (csim → impl OOC) | Hybrid, SHA-3, Ascon |
 | [LOG-005](#log-005--allineamento-repo--workspace-vitis) | 2026-10-09 | Allineamento repo ↔ workspace Vitis | — |
 | [LOG-006](#log-006--import-del-materiale-da-tesi-work--esplorazione-pragma-nel-codice) | 2026-10-09 | Import del materiale da `tesi-work` + esplorazione pragma nel codice | Hybrid, SHA-3, Ascon |
+| [LOG-007](#log-007--benchmark-software-portabile-x86_64--aarch64-fonte-unica-pmu-footprint) | 2026-10-09 | Benchmark software portabile (x86_64 / aarch64): fonte unica, PMU, footprint | Hybrid, SHA-3, Ascon |
 
 ---
 
@@ -172,6 +173,38 @@ Storico delle modifiche al codice e alla configurazione, dalla base di partenza 
 | SHA-3 E5 + `rounds_loop` | `PIPELINE II=1` su `rounds_loop` | permutazione 2641 → **53 cicli**, 3.1k → 8.9k LUT (≈17× throughput/area) | scartata per il target area-first; **da rivalutare** (B-08) |
 
 > I valori sono **stime di C Synthesis** delle versioni di esplorazione e non sono direttamente confrontabili con i valori post-route di LOG-004. Il trend però è indicativo.
+
+---
+
+## LOG-007 — Benchmark software portabile (x86_64 / aarch64): fonte unica, PMU, footprint
+
+**Contesto.** Il benchmark di latenza va eseguito anche su ARM (Kria KV260) e rifatto su WSL e su Ubuntu nativo, con metriche aggiuntive, senza disturbare l'esecuzione degli algoritmi e con una definizione esplicita di cosa si misura.
+
+**Verifica preliminare (codice benchmark vs Vitis).** Ho confrontato i sorgenti token per token, ignorando commenti, pragma, label e stile delle graffe. Il risultato è **funzionalmente equivalente**, con due differenze:
+- Hybrid: Vitis contiene una tabella `keccakf_rndc` non usata in `keccakf_asconp12()` (B-06);
+- SHA-3/Ascon: il benchmark usava le variabili locali `nrounds` e `chirounds` e passava `chirounds` come parametro a `chi()`, mentre Vitis usa costanti letterali. Questo può cambiare il codice generato da gcc.
+
+**Modifiche** (`benchmarks/software-latency/`)
+- **Fonte unica:** eliminate le copie `*/hash.c`, `*/hash.h`. `run_all.sh` compila `../../{Hybrid,Sha,Ascon}-Test/hash.c` in `build/<impl>/`.
+- **Regione cronometrata** (documentata nel report e nel codice): una chiamata a `hash(msg, len, md, mdlen[, mode])`, cioè `hash_init` + `hash_update` + `hash_final`, chiamata diretta (macro `BENCH_MEASURE`, nessun puntatore a funzione).
+- **Due fasi per caso:**
+  - **A, per chiamata:** distribuzione (ns + tick). Nel loop ci sono solo letture di timestamp;
+  - **B, batch:** chiamate consecutive, contatori PMU (`perf_event_open`: cicli core reali e istruzioni, solo user-space) letti solo prima e dopo il batch. Danno ns/hash senza overhead del timer, cicli/hash, IPC e **cicli/byte**.
+- **Tick portabili:** `rdtsc` su x86_64 (chiamato esplicitamente TSC, non cicli reali), `cntvct_el0` + `cntfrq_el0` su aarch64. In precedenza su ARM i cicli valevano 0.
+- **Calibrazione:** l'overhead del timer viene misurato e riportato, non sottratto.
+- **Footprint statico:** `sizeof(hash_ctx_t)`, stima dello stack peggiore (`-fstack-usage`), `.text`/`.rodata` di `hash.o`, confronto ibrido vs (SHA-3 + Ascon).
+- **Piattaforma:**
+  - rilevata automaticamente (`<arch>-<native|wsl>`), flag `-march=native` / `-mcpu=native`;
+  - processo fissato sull'ultimo core (`taskset`);
+  - intestazione del report con CPU, kernel, governor, compilatore e stato della PMU.
+- **Output:** `results/<piattaforma>/result.txt` (stesso formato a tabelle, più la tabella PMU e il footprint) e `data.tsv` (dati grezzi per i grafici). Rimosso il vecchio `result.txt` misurato in WSL: va rifatto.
+
+**Verifica**
+- x86_64 (container cloud): build, KAT, report e `data.tsv` OK. La PMU non è disponibile in quell'ambiente (fallback "n/a" verificato).
+- aarch64: cross-compilazione con `aarch64-linux-gnu-gcc` ed esecuzione sotto `qemu-aarch64`. KAT OK, percorso `cntvct_el0`/`cntfrq_el0` OK.
+- I valori misurati nel container **non sono rappresentativi**: VM condivisa, variazioni fino al 60% fra run identici. Le misure valide sono quelle sulle macchine reali (WSL, Ubuntu nativo, Kria).
+
+**Da fare.** Eseguire `./run_all.sh` su WSL, Ubuntu nativo (portatile) e Kria, poi committare `results/*`.
 
 ---
 

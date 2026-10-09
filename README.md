@@ -70,10 +70,10 @@ ascon-sha3-hybrid-hls/            # = workspace Vitis Unified (Vitis-HLS_Compone
 ├── Ascon-Test/                   # componente HLS — Ascon-Hash standalone (stessa struttura)
 │
 ├── benchmarks/
-│   └── software-latency/         # benchmark di latenza SW hybrid vs standalone (gcc -O2 -march=native)
+│   └── software-latency/         # benchmark di latenza SW hybrid vs standalone (x86_64 e aarch64)
 │       ├── run_all.sh  bench_common.h  README.txt
-│       ├── {hybrid,sha3,ascon}-test/   # hash.c/h senza pragma + main.c di misura
-│       └── result.txt            # risultati (tempo, cicli, throughput, Δ%)
+│       ├── {hybrid,sha3,ascon}-test/main.c   # main di misura; hash.c compilato dai componenti Vitis
+│       └── results/<piattaforma>/            # result.txt + data.tsv (es. x86_64-wsl, x86_64-native, aarch64-native)
 │
 ├── docs/
 │   ├── optimizations/            # candidati di ottimizzazione logica, uno per variante
@@ -204,8 +204,11 @@ Timing chiuso in tutte le varianti. Le latenze di cosim aggregano i vettori KAT 
 
 ```bash
 cd benchmarks/software-latency
-./run_all.sh          # oppure ./run_all.sh quick (~10 s); output in results/result.txt
+sudo sysctl -w kernel.perf_event_paranoid=2   # contatori hardware (opzionale, fino al riavvio)
+./run_all.sh          # oppure ./run_all.sh quick; output in results/<piattaforma>/
 ```
+
+Misura una chiamata a `hash()` compilata **direttamente dai sorgenti Vitis**: latenza per chiamata (distribuzione), cicli core reali, istruzioni, IPC e cicli/byte (contatori PMU letti fuori dal loop misurato), e il footprint statico (contesto, stack, codice). Dettagli e istruzioni per la Kria in `benchmarks/software-latency/README.txt`.
 
 **Software (gcc)** — codice di riferimento pre-HLS:
 
