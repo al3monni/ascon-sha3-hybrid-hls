@@ -38,11 +38,13 @@ verifica KAT, statistiche, I/O.
 
 Per ogni caso (algoritmo x dimensione 16/64/256/1024/4096 B) due fasi:
 
-  A) per chiamata : 100000 chiamate, ognuna fra due timestamp (ns + tick)
+  A) per chiamata : 100000 chiamate, ognuna fra due letture dei tick (registro
+                    rdtsc / cntvct_el0, nessuna syscall); ns = tick / f_tick
                     -> distribuzione: media, mediana, sd, min, max, outlier
-  B) batch        : 100000 chiamate consecutive; contatori letti SOLO prima e
-                    dopo il batch -> ns/hash senza overhead del timer,
-                    cicli core reali, istruzioni, IPC, cicli/byte (cpb)
+  B) batch        : 10 sotto-batch da 10000 chiamate consecutive; contatori letti
+                    SOLO prima e dopo ogni sotto-batch -> MEDIANA di: ns/hash,
+                    cicli core reali, istruzioni, IPC, cicli/byte (cpb);
+                    dispersione fra sotto-batch (disp%) come indicatore di qualita'
 
 Le metriche aggiuntive non disturbano l'algoritmo: dentro il loop misurato ci
 sono solo letture di registri (tick) o nulla (fase B); i contatori hardware
@@ -89,7 +91,12 @@ KRIA KV260 (Ubuntu)
 
 NOTE PER UNA MISURA PULITA
 -------------------------------------------------------------------------------
-  - PC portatile: alimentatore collegato, profilo prestazioni, poche app aperte.
+  - Il report elenca in testa gli "AVVISI SULLA QUALITA' DELLA MISURA".
+  - PC portatile: alimentatore collegato, poche app aperte, e per la durata
+    della misura:
+        echo off | sudo tee /sys/devices/system/cpu/smt/control        # SMT off
+        echo performance | sudo tee /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor
+    (al termine: smt "on", governor di prima, es. schedutil/powersave)
   - Il processo viene fissato sull'ultimo core (taskset).
-  - L'intestazione di result.txt registra CPU, kernel, governor, compilatore,
-    flag, overhead del timer e disponibilita' della PMU.
+  - L'intestazione di result.txt registra CPU, kernel, governor, SMT,
+    clocksource, compilatore, flag, overhead e disponibilita' della PMU.

@@ -22,6 +22,7 @@ Storico delle modifiche al codice e alla configurazione, dalla base di partenza 
 | [LOG-005](#log-005--allineamento-repo--workspace-vitis) | 2026-10-09 | Allineamento repo ↔ workspace Vitis | — |
 | [LOG-006](#log-006--import-del-materiale-da-tesi-work--esplorazione-pragma-nel-codice) | 2026-10-09 | Import del materiale da `tesi-work` + esplorazione pragma nel codice | Hybrid, SHA-3, Ascon |
 | [LOG-007](#log-007--benchmark-software-portabile-x86_64--aarch64-fonte-unica-pmu-footprint) | 2026-10-09 | Benchmark software portabile (x86_64 / aarch64): fonte unica, PMU, footprint | Hybrid, SHA-3, Ascon |
+| [LOG-008](#log-008--benchmark-misura-robusta-a-clocksource-lenta-e-smt) | 2026-10-09 | Benchmark: misura robusta a clocksource lenta e SMT | — |
 
 ---
 
@@ -205,6 +206,27 @@ Storico delle modifiche al codice e alla configurazione, dalla base di partenza 
 - I valori misurati nel container **non sono rappresentativi**: VM condivisa, variazioni fino al 60% fra run identici. Le misure valide sono quelle sulle macchine reali (WSL, Ubuntu nativo, Kria).
 
 **Da fare.** Eseguire `./run_all.sh` su WSL, Ubuntu nativo (portatile) e Kria, poi committare `results/*`.
+
+---
+
+## LOG-008 — Benchmark: misura robusta a clocksource lenta e SMT
+
+**Contesto.** I primi run completi (LOG-007):
+- **x86_64-wsl** (Ryzen 5 5600G) pulito e coerente: ibrido vs standalone in cicli core, SHA-3 da +0.7 a +3.1%, Ascon da −0.6 a −0.1%. cpb a 4096 B: SHA3-256 ≈ 48, SHA3-512 ≈ 87, Ascon ≈ 147.
+- **x86_64-native** (portatile, Ryzen 5 3500U) **non affidabile**:
+  - overhead del timer di 1467 ns per misura, perché il kernel ha scartato il TSC ("TSC found unstable after boot") e usa **HPET**: `clock_gettime` costa circa 700 ns;
+  - cicli PMU incoerenti nello stesso run (+26% e −36% su singoli casi) per **SMT attivo**: la CPU 7 condivide il core fisico con la CPU 6;
+  - governor `schedutil`.
+
+**Modifiche** (`bench_common.h`, `run_all.sh`)
+- **Fase A** con sole letture dei tick (`rdtsc` / `cntvct_el0`), nessuna `clock_gettime` nel loop; ns = tick / f_tick, con la frequenza calibrata una volta all'avvio. Il misurato non dipende più dalla clocksource del kernel. Su un singolo core fissato il TSC è affidabile anche quando il kernel lo scarta come clocksource globale.
+- **Fase B** divisa in 10 sotto-batch: si riporta la **mediana** e la **dispersione** `disp%` = (max − min) / mediana, che serve da indicatore di qualità.
+- Testata del report: clocksource e costo di `clock_gettime`, stato SMT e CPU sorelle. Nuova sezione **"Avvisi sulla qualità della misura"**: clocksource lenta, SMT con fratello attivo, governor diverso da `performance`, PMU multiplexata, `disp%` > 5%.
+- `data.tsv`: aggiunte le colonne `spread_pct` e `pmu_scaled`.
+
+**Verifica.** Container x86: quick run OK e avvisi corretti (il container è rumoroso, quindi scatta l'avviso `disp%`). aarch64 sotto qemu: KAT OK, formato corretto.
+
+**Da fare.** Rifare i run con la nuova metodologia su **tutte e tre** le piattaforme, così sono confrontabili. Sul portatile: SMT disattivato e governor `performance` durante la misura.
 
 ---
 

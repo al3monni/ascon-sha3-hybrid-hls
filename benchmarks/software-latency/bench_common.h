@@ -17,17 +17,21 @@
  *
  * Per ogni caso (algoritmo x dimensione) ci sono DUE fasi di misura:
  *
- *   A) PER-CHIAMATA  - N chiamate, ciascuna racchiusa fra due letture di
- *                      timestamp (tempo ns + tick del contatore). Danno la
- *                      DISTRIBUZIONE (media, mediana, sd, min, max).
- *                      Dentro il loop ci sono SOLO le letture dei timestamp:
- *                      nessuna syscall, nessuna allocazione, nessun I/O.
+ *   A) PER-CHIAMATA  - N chiamate, ciascuna racchiusa fra DUE letture del
+ *                      contatore di tick (un registro: rdtsc / cntvct_el0).
+ *                      Il tempo in ns si ricava dai tick (ns = tick / f_tick):
+ *                      cosi' nel loop non c'e' clock_gettime, che su alcuni
+ *                      sistemi (clocksource HPET) costa ~1 us per lettura.
+ *                      Danno la DISTRIBUZIONE (media, mediana, sd, min, max).
+ *                      Nessuna syscall, allocazione o I/O nel loop.
  *
- *   B) BATCH         - N chiamate consecutive SENZA nulla in mezzo; i contatori
- *                      hardware (PMU: cicli core reali + istruzioni) e i
- *                      timestamp sono letti SOLO prima e dopo l'intero batch.
- *                      Danno i valori medi "puliti" (senza overhead del timer):
- *                      cicli/hash, istruzioni/hash, IPC, cicli/byte.
+ *   B) BATCH         - N chiamate consecutive SENZA nulla in mezzo, divise in
+ *                      BENCH_SUBBATCHES sotto-batch. Per ogni sotto-batch i
+ *                      contatori hardware (PMU: cicli core reali + istruzioni)
+ *                      e il tempo sono letti SOLO prima e dopo. Si riporta la
+ *                      MEDIANA dei sotto-batch (robusta a disturbi passeggeri)
+ *                      e la loro dispersione (indicatore di qualita').
+ *                      Danno: ns/hash, cicli/hash, istruzioni/hash, IPC, cpb.
  *
  * In questo modo la misura delle metriche aggiuntive non tocca il codice
  * misurato: la PMU conta in hardware e viene letta fuori dal loop.
@@ -82,6 +86,7 @@
 
 #define BENCH_DEFAULT_WARMUP      1000     /* iterazioni di riscaldamento, scartate */
 #define BENCH_DEFAULT_ITERS     100000     /* iterazioni effettivamente misurate    */
+#define BENCH_SUBBATCHES            10     /* sotto-batch della fase B (mediana)    */
 
 /* Buffer massimo per il messaggio di input. L'input sintetico piu' grande
  * e' 4096 byte, i vettori KAT arrivano a ~255 byte: 8192 e' abbondante. */
@@ -297,24 +302,28 @@ static inline void bench_compute_stats(uint64_t *data, int n, bench_stats_t *out
 /* ------------------------------------------------------------------ */
 /*  Overhead del timer (calibrazione, eseguita una volta)             */
 /* ------------------------------------------------------------------ */
-/* Misura la regione VUOTA con la stessa sequenza di letture usata nella
- * fase per-chiamata. Il valore (mediana) va letto come "rumore di fondo"
- * della misura per-chiamata; NON viene sottratto ai risultati. */
-static inline void bench_timer_overhead(double *ns_med, double *ticks_med) {
+/* Misura la regione VUOTA con la stessa coppia di letture usata nella fase
+ * per-chiamata (due letture dei tick). Il valore (mediana) va letto come
+ * "rumore di fondo" della misura per-chiamata; NON viene sottratto.
+ * Riporta anche il costo di UNA clock_gettime (usata solo fuori dai loop):
+ * se e' alto (> ~200 ns) la clocksource del kernel e' lenta (es. HPET). */
+static inline void bench_timer_overhead(double *ticks_med, double *clock_ns_med) {
     enum { N = 20001 };
     static uint64_t a[N], b[N];
     for (int i = 0; i < N; i++) {
-        uint64_t t0 = bench_now_ns();
         uint64_t k0 = bench_now_ticks();
         uint64_t k1 = bench_now_ticks();
+        a[i] = k1 - k0;
+    }
+    for (int i = 0; i < N; i++) {
+        uint64_t t0 = bench_now_ns();
         uint64_t t1 = bench_now_ns();
-        a[i] = t1 - t0;
-        b[i] = k1 - k0;
+        b[i] = t1 - t0;
     }
     qsort(a, N, sizeof(uint64_t), bench_cmp_u64);
     qsort(b, N, sizeof(uint64_t), bench_cmp_u64);
-    *ns_med    = (double)a[N / 2];
-    *ticks_med = (double)b[N / 2];
+    *ticks_med    = (double)a[N / 2];
+    *clock_ns_med = (double)b[N / 2];
 }
 
 /* ------------------------------------------------------------------ */
@@ -383,19 +392,24 @@ typedef struct {
     int    pmu_ok;             /* fase B: 1 se cicli/istruzioni sono validi       */
     double cycles;             /* fase B: cicli core medi per hash (PMU)          */
     double instructions;       /* fase B: istruzioni medie per hash (PMU)         */
+    double spread_pct;         /* fase B: (max-min)/mediana dei sotto-batch, %    */
+    int    scaled;             /* fase B: 1 se il kernel ha multiplexato la PMU   */
 } bench_case_result_t;
 
 /*
  * Scrive UNA riga (separata da spazi) con tutte le misure di un caso.
  * Lo script bash legge questo file per costruire le tabelle di result.txt.
  *
- * Ordine dei 22 campi (IMPORTANTE: deve combaciare con il `read` in bash):
+ * Ordine dei 24 campi (IMPORTANTE: deve combaciare con il `read` in bash):
  *
  *   impl  algo  size_byte
  *   ns_mean  ns_median  ns_sd  ns_min  ns_max  ns_removed           (fase A)
  *   tk_mean  tk_median  tk_sd  tk_min  tk_max  tk_removed           (fase A)
  *   throughput_byte_s  throughput_hash_s                            (fase A, media ns)
- *   batch_ns  batch_ticks  pmu_ok  cycles  instructions             (fase B)
+ *   batch_ns  batch_ticks  pmu_ok  cycles  instructions             (fase B, mediane)
+ *   spread_pct  scaled                                              (fase B, qualita')
+ *
+ * In fase A i valori in ns sono i tick convertiti con la frequenza calibrata.
  */
 static inline void bench_write_row(FILE *f, const char *impl, const char *algo,
                                    int msg_size, const bench_case_result_t *r) {
@@ -409,7 +423,7 @@ static inline void bench_write_row(FILE *f, const char *impl, const char *algo,
         "%.1f %.1f %.1f %llu %llu %llu "
         "%.1f %.1f %.1f %llu %llu %llu "
         "%.1f %.1f "
-        "%.2f %.2f %d %.2f %.2f\n",
+        "%.2f %.2f %d %.2f %.2f %.2f %d\n",
         impl, algo, msg_size,
         r->ns.mean, r->ns.median, r->ns.stddev,
         (unsigned long long)r->ns.min, (unsigned long long)r->ns.max,
@@ -418,15 +432,44 @@ static inline void bench_write_row(FILE *f, const char *impl, const char *algo,
         (unsigned long long)r->ticks.min, (unsigned long long)r->ticks.max,
         (unsigned long long)r->ticks.n_removed,
         bps, hps,
-        r->batch_ns, r->batch_ticks, r->pmu_ok, r->cycles, r->instructions);
+        r->batch_ns, r->batch_ticks, r->pmu_ok, r->cycles, r->instructions,
+        r->spread_pct, r->scaled);
 }
 
+/* Frequenza dei tick, calibrata UNA volta all'avvio (bench_write_calibration)
+ * e usata per convertire i tick della fase A in ns. */
+static double bench_hz = 0.0;
+
 /* Riga di calibrazione (una per eseguibile), letta dallo script:
- *   CALIB  ticks_hz  overhead_timer_ns  overhead_timer_ticks  pmu_ok        */
+ *   CALIB  ticks_hz  overhead_ns  overhead_ticks  pmu_ok  clock_gettime_ns
+ * overhead_* = costo della coppia di letture tick della fase A (mediana). */
 static inline void bench_write_calibration(FILE *f, const bench_pmu_t *pmu) {
-    double ov_ns, ov_tk;
-    bench_timer_overhead(&ov_ns, &ov_tk);
-    fprintf(f, "CALIB %.0f %.1f %.1f %d\n", bench_ticks_hz(), ov_ns, ov_tk, pmu->ok);
+    double ov_tk, clk_ns;
+    bench_hz = bench_ticks_hz();
+    bench_timer_overhead(&ov_tk, &clk_ns);
+    fprintf(f, "CALIB %.0f %.1f %.1f %d %.1f\n",
+            bench_hz, bench_hz > 0 ? ov_tk * 1e9 / bench_hz : 0.0, ov_tk, pmu->ok, clk_ns);
+}
+
+/* Converte le statistiche in tick in statistiche in ns (scala lineare). */
+static inline void bench_stats_ticks_to_ns(const bench_stats_t *tk, bench_stats_t *ns) {
+    double k = bench_hz > 0 ? 1e9 / bench_hz : 0.0;
+    *ns = *tk;
+    ns->mean   = tk->mean   * k;
+    ns->median = tk->median * k;
+    ns->stddev = tk->stddev * k;
+    ns->min    = (uint64_t)((double)tk->min * k + 0.5);
+    ns->max    = (uint64_t)((double)tk->max * k + 0.5);
+}
+
+/* Mediana di un piccolo array di double (ordinato sul posto, insertion sort). */
+static inline double bench_median_d(double *v, int n) {
+    for (int i = 1; i < n; i++) {
+        double x = v[i]; int j = i - 1;
+        while (j >= 0 && v[j] > x) { v[j + 1] = v[j]; j--; }
+        v[j + 1] = x;
+    }
+    return (n % 2) ? v[n / 2] : 0.5 * (v[n / 2 - 1] + v[n / 2]);
 }
 
 /* ------------------------------------------------------------------ */
@@ -440,7 +483,7 @@ static inline void bench_write_calibration(FILE *f, const bench_pmu_t *pmu) {
  *   RES    : bench_case_result_t* in cui scrivere i risultati
  *   PMU    : bench_pmu_t*
  *   WARMUP : iterazioni di riscaldamento (scartate)
- *   ITERS  : iterazioni misurate (sia in fase A sia in fase B)
+ *   ITERS  : iterazioni misurate (fase A; fase B = BENCH_SUBBATCHES x ITERS/BENCH_SUBBATCHES)
  *   NS_BUF, TK_BUF : array uint64_t[ITERS] preallocati
  *   CALL   : l'espressione da misurare, es. hash(msg, len, md, 32, 1)
  */
@@ -449,33 +492,53 @@ static inline void bench_write_calibration(FILE *f, const bench_pmu_t *pmu) {
         /* WARMUP: stesse chiamate, nessuna misura (cache e predittori caldi) */ \
         for (int _i = 0; _i < (WARMUP); _i++) { CALL; }                         \
                                                                                 \
-        /* FASE A - per chiamata: solo due letture di timestamp attorno a CALL */\
+        /* FASE A - per chiamata: solo due letture dei tick attorno a CALL    */\
         for (int _i = 0; _i < (ITERS); _i++) {                                  \
-            uint64_t _t0 = bench_now_ns();                                      \
             uint64_t _k0 = bench_now_ticks();                                   \
             CALL;                                                               \
             uint64_t _k1 = bench_now_ticks();                                   \
-            uint64_t _t1 = bench_now_ns();                                      \
-            (NS_BUF)[_i] = _t1 - _t0;                                           \
             (TK_BUF)[_i] = _k1 - _k0;                                           \
         }                                                                       \
-        bench_compute_stats((NS_BUF), (ITERS), &(RES)->ns);                     \
+        (void)(NS_BUF);                                                         \
         bench_compute_stats((TK_BUF), (ITERS), &(RES)->ticks);                  \
+        bench_stats_ticks_to_ns(&(RES)->ticks, &(RES)->ns);                     \
                                                                                 \
-        /* FASE B - batch: ITERS chiamate consecutive, contatori fuori dal loop */\
-        bench_pmu_reading_t _rd;                                                \
-        bench_pmu_start(PMU);                                                   \
-        uint64_t _bt0 = bench_now_ns();                                         \
-        uint64_t _bk0 = bench_now_ticks();                                      \
-        for (int _i = 0; _i < (ITERS); _i++) { CALL; }                          \
-        uint64_t _bk1 = bench_now_ticks();                                      \
-        uint64_t _bt1 = bench_now_ns();                                         \
-        bench_pmu_stop(PMU, &_rd);                                              \
-        (RES)->batch_ns     = (double)(_bt1 - _bt0) / (double)(ITERS);          \
-        (RES)->batch_ticks  = (double)(_bk1 - _bk0) / (double)(ITERS);          \
-        (RES)->pmu_ok       = (PMU)->ok;                                        \
-        (RES)->cycles       = (double)_rd.cycles / (double)(ITERS);             \
-        (RES)->instructions = (double)_rd.instructions / (double)(ITERS);       \
+        /* FASE B - BENCH_SUBBATCHES sotto-batch di chiamate consecutive;      */\
+        /* contatori e tempo letti solo prima/dopo ogni sotto-batch.           */\
+        double _ns[BENCH_SUBBATCHES], _tk[BENCH_SUBBATCHES];                    \
+        double _cy[BENCH_SUBBATCHES], _in[BENCH_SUBBATCHES];                    \
+        int _per = (ITERS) / BENCH_SUBBATCHES; if (_per < 1) _per = 1;          \
+        (RES)->scaled = 0;                                                      \
+        for (int _b = 0; _b < BENCH_SUBBATCHES; _b++) {                         \
+            bench_pmu_reading_t _rd;                                            \
+            bench_pmu_start(PMU);                                               \
+            uint64_t _bt0 = bench_now_ns();                                     \
+            uint64_t _bk0 = bench_now_ticks();                                  \
+            for (int _i = 0; _i < _per; _i++) { CALL; }                         \
+            uint64_t _bk1 = bench_now_ticks();                                  \
+            uint64_t _bt1 = bench_now_ns();                                     \
+            bench_pmu_stop(PMU, &_rd);                                          \
+            _ns[_b] = (double)(_bt1 - _bt0) / (double)_per;                     \
+            _tk[_b] = (double)(_bk1 - _bk0) / (double)_per;                     \
+            _cy[_b] = (double)_rd.cycles / (double)_per;                        \
+            _in[_b] = (double)_rd.instructions / (double)_per;                  \
+            (RES)->scaled |= _rd.scaled;                                        \
+        }                                                                       \
+        (RES)->pmu_ok = (PMU)->ok;                                              \
+        /* dispersione su cicli (se PMU) altrimenti su ns: (max-min)/mediana   */\
+        {                                                                       \
+            double *_q = (PMU)->ok ? _cy : _ns, _mn = _q[0], _mx = _q[0];       \
+            for (int _b = 1; _b < BENCH_SUBBATCHES; _b++) {                     \
+                if (_q[_b] < _mn) _mn = _q[_b];                                 \
+                if (_q[_b] > _mx) _mx = _q[_b];                                 \
+            }                                                                   \
+            double _md = bench_median_d(_q, BENCH_SUBBATCHES);                  \
+            (RES)->spread_pct = _md > 0 ? (_mx - _mn) / _md * 100.0 : 0.0;      \
+        }                                                                       \
+        (RES)->batch_ns     = bench_median_d(_ns, BENCH_SUBBATCHES);            \
+        (RES)->batch_ticks  = bench_median_d(_tk, BENCH_SUBBATCHES);            \
+        (RES)->cycles       = bench_median_d(_cy, BENCH_SUBBATCHES);            \
+        (RES)->instructions = bench_median_d(_in, BENCH_SUBBATCHES);            \
     } while (0)
 
 #endif /* BENCH_COMMON_H */

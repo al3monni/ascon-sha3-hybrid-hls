@@ -95,6 +95,10 @@ GCC_VER="$(gcc --version | head -1)"
 GOVERNOR="$(read_sys /sys/devices/system/cpu/cpu${CORE/-/0}/cpufreq/scaling_governor)"
 FREQ_MAX="$(read_sys /sys/devices/system/cpu/cpu${CORE/-/0}/cpufreq/cpuinfo_max_freq)"
 PARANOID="$(read_sys /proc/sys/kernel/perf_event_paranoid)"
+CLOCKSRC="$(read_sys /sys/devices/system/clocksource/clocksource0/current_clocksource)"
+SMT="$(read_sys /sys/devices/system/cpu/smt/control)"
+# CPU logiche che condividono il core fisico con quella misurata (SMT)
+SIBLINGS="$(read_sys /sys/devices/system/cpu/cpu${CORE/-/0}/topology/thread_siblings_list)"
 
 # File di appoggio
 TMP_PREFIX="$RESULTS/.measure"
@@ -161,17 +165,17 @@ done
 # 4. Carico le misure (chiave: "impl|algo|size")
 # ----------------------------------------------------------------------------
 # Riga CALIB (una per eseguibile): ticks_hz overhead_ns overhead_ticks pmu_ok
-read -r _ TICKS_HZ OV_NS OV_TK PMU_OK < <(grep '^CALIB' "$COMBINED" | head -1)
+read -r _ TICKS_HZ OV_NS OV_TK PMU_OK CLK_NS < <(grep '^CALIB' "$COMBINED" | head -1)
 
-# Righe di misura: 22 campi (vedi bench_common.h -> bench_write_row)
+# Righe di misura: 24 campi (vedi bench_common.h -> bench_write_row)
 declare -A NS_MEAN NS_MED NS_SD NS_MIN NS_MAX NS_REM
 declare -A TK_MEAN TK_MED TK_SD TK_MIN TK_MAX TK_REM
-declare -A BPS HPS B_NS B_TK P_OK CYC INS
+declare -A BPS HPS B_NS B_TK P_OK CYC INS SPR SCL
 
 while read -r impl algo size \
              nsm nsmed nssd nsmin nsmax nsrem \
              tkm tkmed tksd tkmin tkmax tkrem \
-             bps hps bns btk pok cyc ins; do
+             bps hps bns btk pok cyc ins spr scl; do
     key="${impl}|${algo}|${size}"
     NS_MEAN[$key]=$nsm;  NS_MED[$key]=$nsmed; NS_SD[$key]=$nssd
     NS_MIN[$key]=$nsmin; NS_MAX[$key]=$nsmax; NS_REM[$key]=$nsrem
@@ -180,6 +184,7 @@ while read -r impl algo size \
     BPS[$key]=$bps;      HPS[$key]=$hps
     B_NS[$key]=$bns;     B_TK[$key]=$btk;     P_OK[$key]=$pok
     CYC[$key]=$cyc;      INS[$key]=$ins
+    SPR[$key]=$spr;      SCL[$key]=$scl
 done < <(grep -v '^CALIB' "$COMBINED")
 
 SIZES=(16 64 256 1024 4096)
@@ -196,6 +201,19 @@ if [[ "$PMU_OK" == "1" ]]; then
 else
     PMU_TXT="NON disponibile (perf_event_paranoid=$PARANOID o PMU non esposta, es. WSL) -> colonne PMU = n/a"
 fi
+
+# Avvisi sulla qualita' della misura (riportati nella testata del report)
+WARNINGS=()
+awk -v c="$CLK_NS" 'BEGIN { exit !(c > 200) }' && \
+    WARNINGS+=("clock_gettime lenta (${CLK_NS} ns, clocksource=$CLOCKSRC): non influisce sulla fase A (solo tick), ma indica un sistema con timer lento")
+[[ "$SMT" == "on" && "$SIBLINGS" == *[,-]* ]] && \
+    WARNINGS+=("SMT attivo: la CPU $CORE condivide il core fisico con [$SIBLINGS]; un carico sul thread fratello altera i cicli. Consigliato: echo off | sudo tee /sys/devices/system/cpu/smt/control")
+[[ "$GOVERNOR" != "performance" && "$GOVERNOR" != "n/d" ]] && \
+    WARNINGS+=("governor '$GOVERNOR': la frequenza varia, quindi i tempi in ns variano (i cicli PMU no). Consigliato: governor performance")
+grep -v '^CALIB' "$COMBINED" | awk '$24 == 1 { f=1 } END { exit !f }' && \
+    WARNINGS+=("il kernel ha multiplexato i contatori PMU in almeno un caso: cicli/istruzioni stimati")
+grep -v '^CALIB' "$COMBINED" | awk '$23 > 5 { f=1 } END { exit !f }' && \
+    WARNINGS+=("dispersione > 5% fra i sotto-batch della fase B in almeno un caso (vedi colonna disp%): misura disturbata")
 
 # ----------------------------------------------------------------------------
 # 5. Funzioni di supporto per disegnare le tabelle ASCII
@@ -229,7 +247,7 @@ print_stat_table() {
     local -n MEAN MED SD MIN MAX REM
     if [[ "$which" == "ns" ]]; then
         MEAN=NS_MEAN; MED=NS_MED; SD=NS_SD; MIN=NS_MIN; MAX=NS_MAX; REM=NS_REM
-        echo "  TEMPO PER CHIAMATA (ns) - fase A"
+        echo "  TEMPO PER CHIAMATA (ns, dai tick) - fase A"
     else
         MEAN=TK_MEAN; MED=TK_MED; SD=TK_SD; MIN=TK_MIN; MAX=TK_MAX; REM=TK_REM
         echo "  TICK PER CHIAMATA (${TICK_MHZ} MHz) - fase A"
@@ -254,23 +272,24 @@ print_stat_table() {
 # Contatori hardware e valori medi puliti (fase B)
 print_pmu_table() {
     local algo="$1" single="$2"
-    echo "  CONTATORI HARDWARE - fase B (batch, valori medi per hash)"
-    rule 7 6 10 12 12 6 9
-    printf "  | %-7s | %6s | %10s | %12s | %12s | %6s | %9s |\n" \
-           "impl" "input" "ns/hash" "cicli/hash" "istr/hash" "IPC" "cpb"
-    rule 7 6 10 12 12 6 9
+    echo "  CONTATORI HARDWARE - fase B (mediana dei sotto-batch, valori per hash)"
+    rule 7 6 10 12 12 6 9 6
+    printf "  | %-7s | %6s | %10s | %12s | %12s | %6s | %9s | %6s |\n" \
+           "impl" "input" "ns/hash" "cicli/hash" "istr/hash" "IPC" "cpb" "disp%"
+    rule 7 6 10 12 12 6 9 6
     local size k im ok
     for size in "${SIZES[@]}"; do
         for im in hybrid "$single"; do
             k="${im}|${algo}|${size}"; ok="${P_OK[$k]}"
-            printf "  | %-7s | %4d B | %10.1f | %12s | %12s | %6s | %9s |\n" \
+            printf "  | %-7s | %4d B | %10.1f | %12s | %12s | %6s | %9s | %5.1f%% |\n" \
                    "$im" "$size" "${B_NS[$k]}" \
                    "$(pmu_num "$ok" "${CYC[$k]}" "%.0f")" \
                    "$(pmu_num "$ok" "${INS[$k]}" "%.0f")" \
                    "$( [[ "$ok" == "1" ]] && div "${INS[$k]}" "${CYC[$k]}" "%.2f" || echo n/a)" \
-                   "$( [[ "$ok" == "1" ]] && div "${CYC[$k]}" "$size" "%.1f" || echo n/a)"
+                   "$( [[ "$ok" == "1" ]] && div "${CYC[$k]}" "$size" "%.1f" || echo n/a)" \
+                   "${SPR[$k]}"
         done
-        rule 7 6 10 12 12 6 9
+        rule 7 6 10 12 12 6 9 6
     done
     echo
 }
@@ -358,6 +377,8 @@ print_footprint() {
     echo "  - CPU               : $CPU_MODEL ($NCPU core), misura fissata sul core $CORE"
     echo "  - Sistema           : $OS_NAME, kernel $KERNEL"
     echo "  - Governor / f max  : $GOVERNOR / $FREQ_MAX kHz"
+    echo "  - SMT / fratelli    : $SMT / CPU [$SIBLINGS]"
+    echo "  - Clocksource       : $CLOCKSRC (clock_gettime: ${CLK_NS} ns)"
     echo "  - Compilatore       : $GCC_VER"
     echo "  - Flag              : $CFLAGS"
     echo "  - Data              : $(date '+%Y-%m-%d %H:%M')"
@@ -369,16 +390,24 @@ print_footprint() {
     echo
     echo "Configurazione:"
     echo "  - Iterazioni        : $ITERS (fase A) + $ITERS (fase B) per caso, $WARMUP warmup"
-    echo "  - Fase A            : per chiamata, timestamp prima/dopo -> distribuzione"
-    echo "  - Fase B            : batch di chiamate consecutive, contatori letti solo"
-    echo "                        prima/dopo il batch -> medie senza overhead del timer"
-    echo "  - Tempo             : clock_gettime(CLOCK_MONOTONIC)"
+    echo "  - Fase A            : per chiamata, due letture dei tick -> distribuzione;"
+    echo "                        ns = tick / f_tick (nessuna clock_gettime nel loop)"
+    echo "  - Fase B            : 10 sotto-batch di chiamate consecutive, contatori letti"
+    echo "                        solo prima/dopo ciascuno -> MEDIANA dei sotto-batch"
+    echo "  - Tempo fase B      : clock_gettime(CLOCK_MONOTONIC), fuori dai loop"
     echo "  - Tick              : $TICK_SRC, ${TICK_MHZ} MHz"
-    echo "  - Overhead timer    : ${OV_NS} ns / ${OV_TK} tick per misura (mediana, NON sottratto)"
+    echo "  - Overhead fase A   : ${OV_TK} tick = ${OV_NS} ns per misura (mediana, NON sottratto)"
     echo "  - PMU               : $PMU_TXT"
     echo "  - Outlier (fase A)  : rimossi con regola IQR (recinto superiore Q3 + 1.5*IQR)"
     echo "  - Input sintetici   : 16, 64, 256, 1024, 4096 byte (deterministici)"
     echo "  - Correttezza       : verificata sui vettori KAT prima delle misure"
+    echo
+    if (( ${#WARNINGS[@]} )); then
+        echo "AVVISI SULLA QUALITA' DELLA MISURA:"
+        for w in "${WARNINGS[@]}"; do echo "  ! $w"; done
+    else
+        echo "Nessun avviso sulla qualita' della misura."
+    fi
     echo
     echo "----------------------------------------------------------------------------"
     echo "LEGENDA"
@@ -387,7 +416,8 @@ print_footprint() {
     echo "  tick        unita' del contatore a basso costo (vedi 'Tick' sopra)"
     echo "  mean/median/sd/min/max  statistiche sui campioni tenuti (fase A)"
     echo "  out%        percentuale di campioni scartati come outlier (regola IQR)"
-    echo "  ns/hash     tempo medio per hash nella fase B (senza overhead del timer)"
+    echo "  ns/hash     tempo per hash nella fase B (mediana dei sotto-batch)"
+    echo "  disp%       (max - min) / mediana dei 10 sotto-batch (cicli, o ns senza PMU)"
     echo "  cicli/hash  cicli REALI del core per hash (PMU, solo codice utente)"
     echo "  istr/hash   istruzioni eseguite per hash (PMU)"
     echo "  IPC         istruzioni per ciclo = istr/hash / cicli/hash"
@@ -411,7 +441,7 @@ print_footprint() {
 {
     printf "platform\timpl\talgo\tsize\tns_mean\tns_median\tns_sd\tns_min\tns_max\tns_removed\t"
     printf "tk_mean\ttk_median\ttk_sd\ttk_min\ttk_max\ttk_removed\tbyte_s\thash_s\t"
-    printf "batch_ns\tbatch_ticks\tpmu_ok\tcycles\tinstructions\n"
+    printf "batch_ns\tbatch_ticks\tpmu_ok\tcycles\tinstructions\tspread_pct\tpmu_scaled\n"
     grep -v '^CALIB' "$COMBINED" | awk -v p="$PLATFORM" 'BEGIN{OFS="\t"} {$1=$1; print p, $0}' | tr ' ' '\t'
 } > "$TSV"
 
