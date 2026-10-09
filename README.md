@@ -189,7 +189,6 @@ La cartella `paper/` raccoglie la letteratura di riferimento, organizzata per te
 **Roadmap (da `TODO.txt`)**
 
 *Priorità / test hardware*
-- [ ] Test e profilazione del **MYRTUS Security Manager** su ARM Kria.
 - [ ] Test dell'implementazione ibrida su ARM Kria.
 - [ ] **Wrapping dell'acceleratore ibrido** + test su FPGA Kria.
 
