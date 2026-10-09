@@ -20,9 +20,9 @@ void chi(uint64_t st[]) {
     #pragma HLS ARRAY_PARTITION variable=bc type=complete dim=1
  
     /*
-        When pragmas like ARRAY_PARTITION or ARRAY_RESHAPE are used,
-        the HLS tool automatically unrolls any loops consuming this data by default.
-        if this improve throughput   
+        [FIX comment] ARRAY_PARTITION does NOT unroll the consuming loops by itself:
+        it only removes the 2-port limit, so that an UNROLL (or a PIPELINE on the
+        parent loop) can actually perform the accesses in parallel.
     */
 
     // ----- Combined Chi (nonlinear layer) -----
@@ -73,9 +73,9 @@ void diffusion(uint64_t st[]) {
     #pragma HLS ARRAY_PARTITION variable=bc type=complete dim=1
 	
 	/*
-        When pragmas like ARRAY_PARTITION or ARRAY_RESHAPE are used,
-        the HLS tool automatically unrolls any loops consuming this data by default.
-        if this improve throughput   
+        [FIX comment] ARRAY_PARTITION does NOT unroll the consuming loops by itself:
+        it only removes the 2-port limit, so that an UNROLL (or a PIPELINE on the
+        parent loop) can actually perform the accesses in parallel.
     */
 
     // Applies its linear diffusion layer, a combination of bit rotations and XORs.
@@ -119,6 +119,11 @@ void keccakf_asconp12(uint64_t st[25]) {
     
     // because it is reused multiple times and we want to save area
     // with inline off the tool will build one permutation datapath
+
+    // [EXPLORED] without inline off each call site (init/update/final) gets its own
+    //            permutation copy: Ascon est. 4.7k -> 9.5k LUT (ASCON-SHA_PERFORMANCE, E9)
+    // [EXPLORED] #pragma HLS ALLOCATION instances=keccakf_asconp12 limit=1 function
+    //            not needed: post-route reports already show a single instance
     
     //-----------------------------Constants-----------------------------
     
@@ -139,13 +144,20 @@ void keccakf_asconp12(uint64_t st[25]) {
 
     //-----------------------------Rounds-----------------------------
 
-    rounds_loop: for (r = 0; r < 12; r++) { // nrounds=12 for sha3
+    rounds_loop: for (r = 0; r < 12; r++) { // nrounds=12 for ascon
 
         // although nrounds is fixed, pipelining or unrolling this loop is the wrong choice
         // pipelining the outer loop push the tool to flatten/unroll all the inner loops 
 		// since this function represents the whole permutation of both algorithms
 		// this would mean and area explosion and a huge II
 		// sequential execution of the rolled body is the area-optimal choice
+        // [NOTE] Ascon exception: the round body works on 5 words only, so the pipeline
+        //        below IS kept (Ascon NE0): it does not explode like the 25-word Keccak round
+
+        // [EXPLORED] local partitioned copy of the state (stl[25] + ARRAY_PARTITION complete
+        //            + unrolled copy loops, Ascon E1-E2): permutation in 7 cycles but est.
+        //            28.1k LUT vs 4.7k -> dropped. B-01 (union removal) is the area-aware
+        //            way to reach the same goal.
 
         #pragma HLS pipeline II=1
 
@@ -244,6 +256,8 @@ int hash_update(hash_ctx_t *c, const void *data, size_t len) {
     absorbing_loop: for (i = 0; i < len; i++){
 
         // pipelining this loop results in a resource explosion because it calls the whole permutation fuction
+        // [EXPLORED] #pragma HLS PIPELINE (Ascon E1): memory dependency on st,
+        //            target II not met (II=12) -> removed from E2 onwards
         // the only reasonable pragma is to specify the trip count
         // the upper bound is 256 because it is the size of the input buffer that determines it
 		
@@ -294,6 +308,9 @@ int hash_final(void *md, hash_ctx_t *c) {
 
 	// Output 4×8 bytes blocks (32 bytes total), applying permutation between squeezes (like sponge squeezing).
 
+	// [EXPLORED] #pragma HLS UNROLL on squeezing_1..4 (Ascon E10-E12): hash_final becomes
+	//            a separate module with a SECOND permutation copy, est. 4.7k -> 6.6k LUT
+	//            -> kept rolled with PIPELINE II=1
 	squeezing_1: for (i = 0; i < 8; i++) {
 
         // II=1 is feasible here because each iteration does one read and one write
@@ -389,4 +406,4 @@ void hash_top(uint8_t in[256], int inlen, uint8_t md[64], int mdlen) {
     // see hls::stream with TLAST for a fully robust stream design
 
     hash(in, inlen, md, mdlen);
-}
+}

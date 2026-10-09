@@ -69,8 +69,16 @@ ascon-sha3-hybrid-hls/            # = workspace Vitis Unified (Vitis-HLS_Compone
 ├── Sha-Test/                     # componente HLS — SHA-3 standalone (stessa struttura)
 ├── Ascon-Test/                   # componente HLS — Ascon-Hash standalone (stessa struttura)
 │
+├── benchmarks/
+│   └── software-latency/         # benchmark di latenza SW hybrid vs standalone (gcc -O2 -march=native)
+│       ├── run_all.sh  bench_common.h  README.txt
+│       ├── {hybrid,sha3,ascon}-test/   # hash.c/h senza pragma + main.c di misura
+│       └── result.txt            # risultati (tempo, cicli, throughput, Δ%)
+│
 ├── docs/
 │   ├── optimizations/            # candidati di ottimizzazione logica, uno per variante
+│   ├── reports/                  # report su pragma HLS ed esplorazione delle prestazioni (E0…E12, NE0)
+│   ├── presentations/            # slide (latenza software)
 │   └── notes/                    # Notes.txt (motivazioni, pro/contro) e TODO.txt
 │
 ├── reference/
@@ -192,6 +200,13 @@ Timing chiuso in tutte le varianti. Le latenze di cosim aggregano i vettori KAT 
 
 ## Come compilare ed eseguire i test
 
+**Benchmark di latenza software** — hybrid vs standalone, da WSL/Linux:
+
+```bash
+cd benchmarks/software-latency
+./run_all.sh          # oppure ./run_all.sh quick (~10 s); output in results/result.txt
+```
+
 **Software (gcc)** — codice di riferimento pre-HLS:
 
 ```bash
@@ -237,7 +252,8 @@ La cartella `paper/` raccoglie la letteratura di riferimento, organizzata per te
 - [x] Tre varianti (`hybrid`, `sha3`, `ascon`) dopo il **pass di ottimizzazione pragma-only**.
 - [x] Candidati di ottimizzazione logica documentati per variante (`ottimizzazioni_logiche*.md`).
 - [x] Flusso Vitis HLS completo (csim → synth → cosim → package → impl OOC) sulle tre varianti, timing chiuso a 100 MHz.
-- [x] Benchmark software hybrid vs standalone (parità: SHA3-256 Δ ≈ −0.9%, Ascon ≈ −0.1%, SHA3-512 ≈ +3.8%).
+- [x] Benchmark software hybrid vs standalone (parità: SHA3-256 Δ ≈ −0.9%, Ascon ≈ −0.1%, SHA3-512 ≈ +3.8%) — `benchmarks/software-latency/`.
+- [x] Esplorazione delle pragma documentata (`docs/reports/`) e riportata nel codice come commenti `[EXPLORED]`.
 - [x] Repo allineata al workspace Vitis locale + `LOGBOOK.md`.
 - [x] Inquadramento teorico della crypto-agility (NIST CSWP 39) e raccolta bibliografica.
 

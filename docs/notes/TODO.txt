@@ -1,10 +1,7 @@
 PRIORITÀ
 
-- Test e Caratterizzazione (Profilazione) del MYRTUS Security Manager su ARM Kria
-- Test Implementazione Ibrida su ARM Kria
 - Wrapping Acceleratore Ibrido + Test FPGA Kria
 [https://github.com/mdc-suite/AXI-based-driver-applications/tree/main]
-
 
 
 WRITTEN THEORY
@@ -38,6 +35,5 @@ Comparare le prestazioni allo stato dell'arte degli algoritmi con quelle registr
 
 TEST HARDWARE
 
-- Test e Caratterizzazione (Profilazione) del MYRTUS Security Manager su ARM Kria
 - Posizionamento prestazioni acceleratore ibrido rispetto allo stato dell'arte 
 

@@ -43,3 +43,7 @@ dfx_runtime.txt
 
 # --- Vitis IDE report database (binary, regenerable) ---
 **/reports/.db/
+
+# --- Software benchmark: compiled binaries and temporary files ---
+benchmarks/**/bench
+benchmarks/**/results/

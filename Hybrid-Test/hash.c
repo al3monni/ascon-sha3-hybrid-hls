@@ -21,9 +21,9 @@ void theta(uint64_t st[]) {
     #pragma HLS ARRAY_PARTITION variable=bc type=complete dim=1
 
     /*
-        When pragmas like ARRAY_PARTITION or ARRAY_RESHAPE are used,
-        the HLS tool automatically unrolls any loops consuming this data by default,
-        if this improve throughput
+        [FIX comment] ARRAY_PARTITION does NOT unroll the consuming loops by itself:
+        it only removes the 2-port limit, so that an UNROLL (or a PIPELINE on the
+        parent loop) can actually perform the accesses in parallel.
     */
     
     // ----- Theta step (mix columns) -----
@@ -104,9 +104,9 @@ void rho_pi(uint64_t st[]) {
     #pragma HLS ARRAY_PARTITION variable=bc type=complete dim=1
 
     /*
-        When pragmas like ARRAY_PARTITION or ARRAY_RESHAPE are used,
-        the HLS tool automatically unrolls any loops consuming this data by default.
-        if this improve throughput   
+        [FIX comment] ARRAY_PARTITION does NOT unroll the consuming loops by itself:
+        it only removes the 2-port limit, so that an UNROLL (or a PIPELINE on the
+        parent loop) can actually perform the accesses in parallel.
     */
 
     // ----- Rho and Pi steps -----
@@ -146,9 +146,9 @@ void chi(uint64_t st[], int chirounds) {
     #pragma HLS ARRAY_PARTITION variable=bc type=complete dim=1
  
     /*
-        When pragmas like ARRAY_PARTITION or ARRAY_RESHAPE are used,
-        the HLS tool automatically unrolls any loops consuming this data by default.
-        if this improve throughput   
+        [FIX comment] ARRAY_PARTITION does NOT unroll the consuming loops by itself:
+        it only removes the 2-port limit, so that an UNROLL (or a PIPELINE on the
+        parent loop) can actually perform the accesses in parallel.
     */
 
     // ----- Combined Chi (nonlinear layer) -----
@@ -233,9 +233,9 @@ void diffusion(uint64_t st[]) {
     #pragma HLS ARRAY_PARTITION variable=bc type=complete dim=1
 	
 	/*
-        When pragmas like ARRAY_PARTITION or ARRAY_RESHAPE are used,
-        the HLS tool automatically unrolls any loops consuming this data by default.
-        if this improve throughput   
+        [FIX comment] ARRAY_PARTITION does NOT unroll the consuming loops by itself:
+        it only removes the 2-port limit, so that an UNROLL (or a PIPELINE on the
+        parent loop) can actually perform the accesses in parallel.
     */
 
     // Applies its linear diffusion layer, a combination of bit rotations and XORs.
@@ -279,6 +279,11 @@ void keccakf_asconp12(uint64_t st[25], uint8_t mode) {
     
     // because it is reused multiple times and we want to save area
     // with inline off the tool will build one permutation datapath
+
+    // [EXPLORED] without inline off each call site (init/update/final) gets its own
+    //            permutation copy: Ascon est. 4.7k -> 9.5k LUT (ASCON-SHA_PERFORMANCE, E9)
+    // [EXPLORED] #pragma HLS ALLOCATION instances=keccakf_asconp12 limit=1 function
+    //            not needed: post-route reports already show a single instance
     
     //-----------------------------Constants-----------------------------
     
@@ -332,6 +337,12 @@ void keccakf_asconp12(uint64_t st[25], uint8_t mode) {
 		// since this function represents the whole permutation of both algorithms
 		// this would mean and area explosion and a huge II
 		// sequential execution of the rolled body is the area-optimal choice
+
+        // [EXPLORED] #pragma HLS PIPELINE II=1 here (SHA-3 exploration E5 + rounds_loop):
+        //            permutation 2641 -> 53 cycles, est. LUT 3.1k -> 8.9k (all steps unrolled).
+        //            Rejected for the area-first target, but ~17x better throughput/area:
+        //            to be re-evaluated after B-01 (union removal).
+        // [EXPLORED] local partitioned copy of st (Ascon E1-E2): est. 28.1k LUT -> dropped.
 		
 
         #pragma HLS LOOP_TRIPCOUNT min=12 max=24
@@ -443,6 +454,8 @@ int hash_update(hash_ctx_t *c, const void *data, size_t len, uint8_t mode) {
     absorbing_loop: for (i = 0; i < len; i++) {
 
         // pipelining this loop results in a resource explosion because it calls the whole permutation fuction
+        // [EXPLORED] #pragma HLS PIPELINE (Ascon E1): memory dependency on st,
+        //            target II not met (II=12) -> removed from E2 onwards
         // the only reasonable pragma is to specify the trip count
         // the upper bound is 256 because it is the size of the input buffer that determines it
 		
@@ -518,7 +531,10 @@ int hash_final(void *md, hash_ctx_t *c, uint8_t mode) {
     
         // Output 4×8 bytes blocks (32 bytes total), applying permutation between squeezes (like sponge squeezing).
 
-       squeezing_1: for (i = 0; i < 8; i++) {
+        // [EXPLORED] #pragma HLS UNROLL on squeezing_1..4 (Ascon E10-E12): hash_final becomes
+        //            a separate module with a SECOND permutation copy, est. 4.7k -> 6.6k LUT
+        //            -> kept rolled with PIPELINE II=1
+        squeezing_1: for (i = 0; i < 8; i++) {
 
             // II=1 is feasible here because each iteration does one read and one write
 
@@ -614,4 +630,4 @@ void hash_top(uint8_t in[256], int inlen, uint8_t md[64], int mdlen, uint8_t mod
     // see hls::stream with TLAST for a fully robust stream design
 
     hash(in, inlen, md, mdlen, mode);
-}
+}

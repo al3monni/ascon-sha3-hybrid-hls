@@ -20,6 +20,7 @@ Storico delle modifiche al codice e alla configurazione, dalla base di partenza 
 | [LOG-003](#log-003--pass-di-ottimizzazione-pragma-only) | ≤ 2026-06 | Pass di ottimizzazione pragma-only | Hybrid, SHA-3, Ascon |
 | [LOG-004](#log-004--flusso-vitis-hls-completo) | 2026-06-25/26 | Flusso Vitis HLS completo (csim → impl OOC) | Hybrid, SHA-3, Ascon |
 | [LOG-005](#log-005--allineamento-repo--workspace-vitis) | 2026-10-09 | Allineamento repo ↔ workspace Vitis | — |
+| [LOG-006](#log-006--import-del-materiale-da-tesi-work--esplorazione-pragma-nel-codice) | 2026-10-09 | Import del materiale da `tesi-work` + esplorazione pragma nel codice | Hybrid, SHA-3, Ascon |
 
 ---
 
@@ -144,6 +145,36 @@ Storico delle modifiche al codice e alla configurazione, dalla base di partenza 
 
 ---
 
+## LOG-006 — Import del materiale da `tesi-work` + esplorazione pragma nel codice
+
+**Contesto.** Parte del lavoro era solo nella cartella locale `tesi-work`: il benchmark di latenza software, i report sulle pragma e sull'esplorazione delle prestazioni, e le versioni del codice usate per quell'esplorazione (`code/HLS-pragma/`). L'obiettivo è avere **un'unica copia di lavoro**, cioè questa repo, senza perdere informazioni.
+
+**Modifiche**
+- `tesi-work/code/statistics-test/` → `benchmarks/software-latency/` (senza gli eseguibili `bench`).
+- Report → `docs/reports/`: `ASCON-SHA_PERFORMANCE.docx` (esperimenti E0…E12, NE0 con screenshot di sintesi), `HLS_Pragma_Report.docx`, `pragma-analysis.docx` e `report_pragma_HLS_hash.md` (versione Markdown dell'analisi).
+- `presentazione_latenza.pptx` → `docs/presentations/`.
+- `docs/notes/TODO.txt` aggiornato: rimosse le voci sul MYRTUS Security Manager, che è diventato un progetto separato.
+- **Non importato:** il codice di `tesi-work/code/HLS-pragma/{hybrid,sha3,ascon}-test`, cioè le versioni dell'esplorazione superate da `*-Test/`. Le sue lezioni sono riportate nel codice attuale come commenti (vedi sotto). Non importati nemmeno `opt-pragma/` e `original-hybrid-code/`, identici a quanto già presente.
+- **Commenti nel codice** (`*-Test/hash.c`, **solo commenti**: verificato che, tolti i commenti, il codice è identico; KAT OK su tutte le varianti):
+  - `[EXPLORED]`: pragma provate e scartate, con il motivo e i numeri (stime HLS) dagli esperimenti;
+  - `[FIX comment]`: corretta la frase imprecisa secondo cui `ARRAY_PARTITION` srotola da sola i loop. In realtà rimuove soltanto il limite delle 2 porte; l'unroll lo fanno `UNROLL` o `PIPELINE` sul loop padre;
+  - Ascon: chiarito che, a differenza di Keccak, la `PIPELINE` su `rounds_loop` è mantenuta (round su 5 word, NE0). Corretto il commento `nrounds=12 for sha3` → `for ascon`.
+
+**Lezioni dall'esplorazione delle pragma** (stime di sintesi HLS, clock 10 ns)
+
+| Esperimento | Pragma | Effetto | Esito |
+|---|---|---|---|
+| Ascon E1–E2 | copia locale partizionata dello stato (`stl[25]`) + copie srotolate | permutazione in 7 cicli, **28.1k LUT** (vs 4.7k) | scartata: B-01 è la via a basso costo d'area |
+| Ascon E1 | `PIPELINE` su `absorbing_loop` | dipendenza di memoria su `st`, II=12 non rispettato | rimossa |
+| Ascon E9 | rimozione di `INLINE off` su `keccakf_asconp12` | una permutazione per call-site: 4.7k → **9.5k LUT** | `INLINE off` mantenuta |
+| Ascon E10–E12 | `UNROLL` su `squeezing_1..4` | `hash_final` diventa un modulo con una seconda permutazione: 4.7k → 6.6k LUT | mantenuta `PIPELINE II=1` |
+| SHA-3 E2 | `PIPELINE` su `top_chi` vs solo sui loop interni | 5.0k LUT / BRAM 6 / 2641 cicli vs **4.2k LUT** / BRAM 18 / 3865 cicli | solo loop interni (area-first) |
+| SHA-3 E5 + `rounds_loop` | `PIPELINE II=1` su `rounds_loop` | permutazione 2641 → **53 cicli**, 3.1k → 8.9k LUT (≈17× throughput/area) | scartata per il target area-first; **da rivalutare** (B-08) |
+
+> I valori sono **stime di C Synthesis** delle versioni di esplorazione e non sono direttamente confrontabili con i valori post-route di LOG-004. Il trend però è indicativo.
+
+---
+
 ## Backlog
 
 Attività pianificate, in ordine di priorità. Quando un'attività parte, riceve un `LOG-NNN`.
@@ -157,4 +188,5 @@ Attività pianificate, in ordine di priorità. Quando un'attività parte, riceve
 | B-05 | Dataset di tesi: area stimata vs reale, II di sintesi vs II osservato in cosim, throughput/area per algoritmo | tutte | — | da fare |
 | B-06 | Pulizia: rimuovere `keccakf_rndc` non usato in `keccakf_asconp12()` (Hybrid) e le variabili inutilizzate (`i`, `j`) | Hybrid | LOG-001 | da fare |
 | B-07 | Ottimizzazioni Ascon minori: azzerare solo 5 word in `hash_init`, absorb a granularità di word | Ascon | `ottimizzazioni_logiche_ascon.md` §2–3 | da fare |
+| B-08 | Rivalutare `PIPELINE II=1` su `rounds_loop`: in SHA-3 E5 ≈17× throughput/area a ≈2.8× LUT. Ha senso se la metrica è throughput/area e non area pura; da misurare dopo B-01 | SHA-3, Hybrid | LOG-006 | da fare |
 | — | Dopo ogni modifica logica che cambia l'IP: incrementare `ip.version` nel package | tutte | — | regola |
