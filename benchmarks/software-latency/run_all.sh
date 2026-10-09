@@ -74,8 +74,21 @@ declare -A SRC=( [hybrid]="$REPO/Hybrid-Test" [sha3]="$REPO/Sha-Test" [ascon]="$
 
 # Core su cui fissare il processo: l'ultimo (il core 0 gestisce di solito
 # la maggior parte degli interrupt). Se taskset non c'e', nessun pinning.
+# Si sceglie la CPU logica ONLINE con indice piu' alto: con SMT spento le CPU
+# dispari possono essere offline, quindi non basta usare nproc-1.
 NCPU="$(nproc 2>/dev/null || echo 1)"
-CORE=$((NCPU - 1))
+last_online_cpu() {
+    local list max=0 part a b
+    list="$(cat /sys/devices/system/cpu/online 2>/dev/null || echo 0)"   # es. "0-7" o "0,2,4,6"
+    IFS=',' read -ra parts <<< "$list"
+    for part in "${parts[@]}"; do
+        a="${part%-*}"; b="${part#*-}"
+        (( b > max )) && max=$b
+        (( a > max )) && max=$a
+    done
+    echo "$max"
+}
+CORE="$(last_online_cpu)"
 if command -v taskset >/dev/null 2>&1; then PIN="taskset -c $CORE"; else PIN=""; CORE="-"; fi
 
 # Informazioni sulla piattaforma (solo lettura, per l'intestazione del report)
