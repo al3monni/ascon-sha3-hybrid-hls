@@ -1,6 +1,8 @@
-# Master-Thesis — Crypto-Agile FPGA Hashing (SHA-3 / Ascon)
+# ascon-sha3-hybrid-hls — Crypto-Agile FPGA Hashing (SHA-3 / Ascon)
 
 Implementazione **crypto-agile** su FPGA di algoritmi di hash crittografici — **SHA-3/Keccak** e **Ascon-Hash** — realizzata in **Vitis HLS** con target **AMD Kria KV260** (Zynq UltraScale+ `xck26`).
+
+> La root di questa repo **coincide con il workspace Vitis Unified (2025.1)** usato in locale: ogni cartella `*-Test/` è un componente HLS apribile direttamente dall'IDE. Lo storico delle modifiche al codice è tracciato in [`LOGBOOK.md`](LOGBOOK.md).
 
 Un **acceleratore ibrido** (un unico datapath che calcola entrambi gli algoritmi, selezionabili a runtime) è una scelta giustificata rispetto a due implementazioni *standalone*, misurando il costo dell'astrazione unificata su area, throughput e latenza?
 
@@ -16,7 +18,9 @@ Un **acceleratore ibrido** (un unico datapath che calcola entrambi gli algoritmi
 - [Filosofia di ottimizzazione e metrica](#filosofia-di-ottimizzazione-e-metrica)
 - [Il collo di bottiglia della union](#il-collo-di-bottiglia-della-union)
 - [Verifica funzionale (KAT)](#verifica-funzionale-kat)
+- [Risultati HLS attuali](#risultati-hls-attuali)
 - [Come compilare ed eseguire i test](#come-compilare-ed-eseguire-i-test)
+- [Workflow Vitis ↔ Git](#workflow-vitis--git)
 - [Materiale bibliografico](#materiale-bibliografico)
 - [Stato del progetto e roadmap](#stato-del-progetto-e-roadmap)
 - [Riferimenti](#riferimenti)
@@ -49,27 +53,28 @@ Contro-argomenti considerati (e in gran parte **smentiti** dai dati raccolti fin
 ## Struttura del repository
 
 ```
-Master-Thesis/
+ascon-sha3-hybrid-hls/            # = workspace Vitis Unified (Vitis-HLS_Components)
 ├── README.md
-├── Notes.txt                     # note di ricerca: motivazioni, pro/contro dell'ibrido, aggancio a MYRTUS
-├── TODO.txt                      # roadmap: teoria, pragma, latenza software, test hardware
+├── LOGBOOK.md                    # storico dettagliato delle modifiche al codice
+├── .gitignore  .gitattributes    # esclusi build/cache Vitis; testo normalizzato LF
 │
-├── code/
-│   ├── opt-pragma/               # varianti ottimizzate (pragma-only pass, annotazioni [WAS]/[OPT])
-│   │   ├── ascon/                # standalone Ascon-Hash
-│   │   │   ├── hash.h  hash.c  main.c
-│   │   │   └── ottimizzazioni_logiche_ascon.md
-|   |   |
-│   │   ├── sha3/                 # standalone SHA-3
-│   │   │   ├── hash.h  hash.c  main.c
-│   │   │   └── ottimizzazioni_logiche_sha3.md
-|   |   |
-│   │   └── hybrid/               # variante ibrida / crypto-agile (hash_top)
-│   │       ├── hash.h  hash.c  main.c
-│   │       └── ottimizzazioni_logiche.md
-│   │
-│   └── original-hybrid-code/     # base di partenza dell'ibrido (Makefile + sorgenti + build)
-│       ├── Makefile  hash.h  hash.c  main.c
+├── Hybrid-Test/                  # componente HLS — variante ibrida (SHA-3 + Ascon, `mode` a runtime)
+│   ├── hash.h  hash.c  main.c    #   sorgenti + testbench KAT
+│   ├── hls_config.cfg            #   configurazione HLS (part, top, flow, file)
+│   ├── vitis-comp.json           #   descrittore del componente per l'IDE
+│   └── Hybrid-Test/              #   work_dir: solo gli output utili sono versionati
+│       ├── reports/              #     hls_compile / hls_cosim / hls_impl_syn / hls_impl_pnr
+│       ├── *.hls*_summary        #     riepiloghi per step (csim, compile, cosim, package, impl)
+│       └── hash_top.zip          #     IP packaged (Vivado IP catalog)
+├── Sha-Test/                     # componente HLS — SHA-3 standalone (stessa struttura)
+├── Ascon-Test/                   # componente HLS — Ascon-Hash standalone (stessa struttura)
+│
+├── docs/
+│   ├── optimizations/            # candidati di ottimizzazione logica, uno per variante
+│   └── notes/                    # Notes.txt (motivazioni, pro/contro) e TODO.txt
+│
+├── reference/
+│   └── original-hybrid-code/     # base di partenza dell'ibrido (Makefile + sorgenti, pre-HLS)
 │
 └── paper/                        # materiale bibliografico
     ├── Integrating_FPGA-Based_Acceleration_in_Industrial_Motion_Control_System.pdf
@@ -79,22 +84,24 @@ Master-Thesis/
     └── crypto-agility/           # NIST CSWP 39, sintesi e slide sulla crypto-agility
 ```
 
+Le cartelle `vivado/` (block design KV260) e `sw/` (applicazioni di test sulla board) verranno aggiunte con l'integrazione di sistema.
+
 ## Le tre varianti e le due basi di codice
 
-**Tre varianti** in `code/opt-pragma/`:
+**Tre varianti**, una per componente Vitis:
 
-| Variante | Top-level | Descrizione |
+| Componente | Top-level | Descrizione |
 |---|---|---|
-| **hybrid** | `hash_top` | Core unificato SHA-3 + Ascon con parametro `mode` a runtime. |
-| **sha3** | — | Implementazione dedicata SHA-3/Keccak. |
-| **ascon** | — | Implementazione dedicata Ascon-Hash. |
+| **`Hybrid-Test/`** | `hash_top` | Core unificato SHA-3 + Ascon con parametro `mode` a runtime. |
+| **`Sha-Test/`** | `hash_top` | Implementazione dedicata SHA-3/Keccak. |
+| **`Ascon-Test/`** | `hash_top` | Implementazione dedicata Ascon-Hash. |
 
-Ogni variante è composta da `hash.h`, `hash.c`, `main.c` e da un file `ottimizzazioni_logiche*.md` che raccoglie i candidati di ottimizzazione a livello logico, ordinati per impatto.
+Ogni variante è composta da `hash.h`, `hash.c`, `main.c` e `hls_config.cfg`; i candidati di ottimizzazione a livello logico, ordinati per impatto, sono in `docs/optimizations/ottimizzazioni_logiche_{hybrid,sha3,ascon}.md`.
 
 **Due basi di codice:**
 
-- `code/original-hybrid-code/` — la base di partenza (con `Makefile`), non ancora ottimizzata per HLS.
-- `code/opt-pragma/` — le varianti dopo il **pass di ottimizzazione pragma-only**, con convenzione di annotazione sistematica: `[WAS]` per i pragma originali e `[OPT]` per il razionale (in inglese).
+- `reference/original-hybrid-code/` — la base di partenza (con `Makefile`), non ancora ottimizzata per HLS.
+- `*-Test/` — le varianti dopo il **pass di ottimizzazione pragma-only**: ogni pragma è accompagnata da un commento (in inglese) che ne spiega il razionale e i limiti, ad es. perché un loop non raggiunge `II=1`.
 
 La convenzione `mode` nel core unificato è:
 
@@ -140,7 +147,7 @@ Il wrapper `hash_top` è il **confine hardware sintetizzabile** attorno alla fun
 
 **Approccio HLS (area-first):** l'ottimizzazione privilegia l'area, con il throughput come obiettivo secondario. Le scelte principali:
 
-- **Datapath di permutazione unico e condiviso** tramite `#pragma HLS INLINE off` + `#pragma HLS ALLOCATION instances=1` su `keccakf_asconp12` (una sola istanza fisica riusata da entrambi gli algoritmi).
+- **Datapath di permutazione unico e condiviso** tramite `#pragma HLS INLINE off` su `keccakf_asconp12`: tutte le call-site (init/update/final) condividono una sola istanza fisica, riusata da entrambi gli algoritmi. Il report post-route conferma un'unica istanza `grp_keccakf_asconp12_1` in tutte e tre le varianti, quindi `ALLOCATION instances=1` non è necessaria (vedi `LOGBOOK.md`, LOG-005).
 - **Leaf transform inline** per ridurre l'overhead di chiamata.
 - **`bc[5]` e tabelle costanti partizionate completamente**.
 - **Loop mantenuti rolled** per risparmiare area; `II=1` solo dove la RAM di stato a 2 porte può fisicamente sostenerlo.
@@ -169,6 +176,51 @@ Questo impatterebbe l'absorbing loop in `hash_update()` e il padding/squeezing i
 
 La correttezza è verificata con **Known Answer Test (KAT)** tramite gcc. Il testbench (`main.c`) copre **SHA3-256** (messaggio corto), **SHA3-512** (messaggio multiblocco) e **Ascon-Hash** (output a 256 bit); confronta il digest calcolato con quello atteso (`memcmp`) e stampa `All Self-Tests OK!` in caso di successo.
 
+## Risultati HLS attuali
+
+Flusso completo eseguito in Vitis HLS 2025.1 su tutte e tre le varianti (C Simulation → Synthesis → C/RTL Co-simulation → Package → Implementation out-of-context), part `xck26-sfvc784-2LV-c`, clock target **10 ns (100 MHz)**. Valori post-route, dai report in `*/*/reports/`:
+
+| Variante | LUT | FF | BRAM | DSP | Period post-route | Cosim latency min / avg / max (cicli) |
+|---|---:|---:|---:|---:|---:|---|
+| Hybrid | 3281 | 2215 | 10 | 0 | 6.169 ns | 2287 / 5853 / 14352 |
+| SHA-3 | 2214 | 1551 | 10 | 0 | 6.023 ns | 3449 / 8849 / 14250 |
+| Ascon | 1200 | 744 | 4 | 0 | 4.722 ns | 183 / 260 / 338 |
+
+Timing chiuso in tutte le varianti. Le latenze di cosim aggregano i vettori KAT del testbench (messaggi e algoritmi diversi), quindi non sono direttamente confrontabili tra varianti: il confronto *throughput-to-area* per algoritmo è in roadmap.
+
+> ⚠️ In questa versione le `#pragma HLS INTERFACE` di `hash_top` sono commentate: l'IP esportato ha porte `ap_memory`/`ap_none` e **non è ancora integrabile** in un block design con lo Zynq PS. Il wrapper AXI è il prossimo step (vedi `LOGBOOK.md`).
+
+## Come compilare ed eseguire i test
+
+**Software (gcc)** — codice di riferimento pre-HLS:
+
+```bash
+cd reference/original-hybrid-code
+make            # gcc -Wall -O3; `make clean` rimuove i binari
+./hashtest      # atteso: All Self-Tests OK!
+```
+
+Le varianti `*-Test/` compilano anche con gcc (`gcc -O2 hash.c main.c`): le pragma HLS vengono ignorate.
+
+**Vitis HLS (IDE)** — aprire la root della repo come workspace in Vitis Unified 2025.1, selezionare il componente e lanciare in sequenza *C Simulation*, *C Synthesis*, *C/RTL Co-simulation*, *Package*, *Implementation*. Tutta la configurazione è in `hls_config.cfg` del componente.
+
+**Vitis HLS (riga di comando)** — equivalente, dalla cartella del componente:
+
+```bash
+vitis-run --mode hls --csim  --config ./hls_config.cfg --work_dir <Componente>
+v++ -c    --mode hls         --config ./hls_config.cfg --work_dir <Componente>
+vitis-run --mode hls --cosim --config ./hls_config.cfg --work_dir <Componente>
+vitis-run --mode hls --package --config ./hls_config.cfg --work_dir <Componente>
+vitis-run --mode hls --impl  --config ./hls_config.cfg --work_dir <Componente>
+```
+
+## Workflow Vitis ↔ Git
+
+- Il lavoro si svolge in Vitis su Windows (`C:\Users\monni\Desktop\Vitis-HLS_Components`); i commit si fanno da **WSL** sulla stessa cartella (`/mnt/c/Users/monni/Desktop/Vitis-HLS_Components`).
+- Sono versionati **sorgenti, `hls_config.cfg`, `vitis-comp.json`, report, summary e IP packaged**; build, cache, log e metadati dell'IDE sono esclusi dal `.gitignore`.
+- Ogni modifica al codice o alla configurazione corrisponde a una voce in `LOGBOOK.md` (motivazione, file toccati, risultati prima/dopo) e a un commit che la cita (es. `LOG-007: remove union from hash_ctx_t`).
+- Prima di committare nuovi risultati si rilancia il flusso HLS, così che report e sorgenti restino coerenti.
+
 ## Materiale bibliografico
 
 La cartella `paper/` raccoglie la letteratura di riferimento, organizzata per tema:
@@ -184,13 +236,19 @@ La cartella `paper/` raccoglie la letteratura di riferimento, organizzata per te
 - [x] Base di codice ibrida funzionante con verifica KAT (SHA-3 + Ascon).
 - [x] Tre varianti (`hybrid`, `sha3`, `ascon`) dopo il **pass di ottimizzazione pragma-only**.
 - [x] Candidati di ottimizzazione logica documentati per variante (`ottimizzazioni_logiche*.md`).
+- [x] Flusso Vitis HLS completo (csim → synth → cosim → package → impl OOC) sulle tre varianti, timing chiuso a 100 MHz.
+- [x] Benchmark software hybrid vs standalone (parità: SHA3-256 Δ ≈ −0.9%, Ascon ≈ −0.1%, SHA3-512 ≈ +3.8%).
+- [x] Repo allineata al workspace Vitis locale + `LOGBOOK.md`.
 - [x] Inquadramento teorico della crypto-agility (NIST CSWP 39) e raccolta bibliografica.
 
 **Roadmap (da `TODO.txt`)**
 
 *Priorità / test hardware*
 - [ ] Test dell'implementazione ibrida su ARM Kria.
-- [ ] **Wrapping dell'acceleratore ibrido** + test su FPGA Kria.
+- [ ] Ottimizzazioni logiche pendenti, a partire dalla rimozione della `union` su `st` (`docs/optimizations/`).
+- [ ] **Wrapping dell'acceleratore ibrido** (interfaccia AXI4-Stream + AXI DMA) + test su FPGA Kria.
+- [ ] Block design Vivado (Zynq MPSoC + AXI DMA + IP), bitstream e applicazione di test sulla KV260.
+- [ ] Dataset post-implementation completo: area stimata vs reale, II di sintesi vs II osservato in cosim.
 
 *Teoria scritta*
 - [ ] Motivare la tesi: MYRTUS Security Manager + Security Levels + Crypto-Agility.
