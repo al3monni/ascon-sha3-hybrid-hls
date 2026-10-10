@@ -21,8 +21,10 @@
 #   4) costruisce result.txt (piattaforma + legenda + tabelle) e data.tsv
 #
 # Uso:
-#   ./run_all.sh           esecuzione normale (100000 iterazioni + 1000 warmup)
-#   ./run_all.sh quick     esecuzione rapida   (2000 iterazioni + 200 warmup)
+#   ./run_all.sh           esecuzione normale (10000 iterazioni + 1000 warmup)
+#   ./run_all.sh quick     esecuzione rapida   (1000 iterazioni + 100 warmup)
+#
+#   sudo ./isolate.sh run  esecuzione su dispositivo isolato (consigliato su Linux nativo)
 #
 #   PLATFORM=<nome> ./run_all.sh   forza il nome della cartella dei risultati
 #                                  (default: <arch>-<native|wsl>)
@@ -37,12 +39,12 @@ set -euo pipefail
 # ----------------------------------------------------------------------------
 # 1. Parametri e piattaforma
 # ----------------------------------------------------------------------------
-ITERS=100000          # iterazioni misurate per ogni caso (per ciascuna fase)
+ITERS=10000           # iterazioni misurate per ogni caso (per ciascuna fase)
 WARMUP=1000           # iterazioni di riscaldamento (scartate)
 
 if [[ "${1:-}" == "quick" ]]; then
-    ITERS=2000
-    WARMUP=200
+    ITERS=1000
+    WARMUP=100
     echo "[modalita' quick: $ITERS iterazioni, $WARMUP warmup]"
 fi
 
@@ -76,7 +78,7 @@ declare -A SRC=( [hybrid]="$REPO/Hybrid-Test" [sha3]="$REPO/Sha-Test" [ascon]="$
 # la maggior parte degli interrupt). Se taskset non c'e', nessun pinning.
 # Si sceglie la CPU logica ONLINE con indice piu' alto: con SMT spento le CPU
 # dispari possono essere offline, quindi non basta usare nproc-1.
-NCPU="$(nproc 2>/dev/null || echo 1)"
+NCPU="$(getconf _NPROCESSORS_ONLN 2>/dev/null || nproc)"   # CPU online (non solo quelle concesse a questo processo)
 last_online_cpu() {
     local list max=0 part a b
     list="$(cat /sys/devices/system/cpu/online 2>/dev/null || echo 0)"   # es. "0-7" o "0,2,4,6"
@@ -88,7 +90,7 @@ last_online_cpu() {
     done
     echo "$max"
 }
-CORE="$(last_online_cpu)"
+CORE="${BENCH_CORE:-$(last_online_cpu)}"   # BENCH_CORE e' impostato da isolate.sh
 if command -v taskset >/dev/null 2>&1; then PIN="taskset -c $CORE"; else PIN=""; CORE="-"; fi
 
 # Informazioni sulla piattaforma (solo lettura, per l'intestazione del report)
@@ -217,6 +219,9 @@ fi
 
 # Avvisi sulla qualita' della misura (riportati nella testata del report)
 WARNINGS=()
+ISOLATION="${BENCH_ISOLATION:-nessuno}"
+[[ -z "${BENCH_ISOLATION:-}" && "$ENVTYPE" == "native" ]] && \
+    WARNINGS+=("dispositivo NON isolato: altri processi possono girare sul core di misura. Consigliato: sudo ./isolate.sh run")
 awk -v c="$CLK_NS" 'BEGIN { exit !(c > 200) }' && \
     WARNINGS+=("clock_gettime lenta (${CLK_NS} ns, clocksource=$CLOCKSRC): non influisce sulla fase A (solo tick), ma indica un sistema con timer lento")
 [[ "$SMT" == "on" && "$SIBLINGS" == *[,-]* ]] && \
@@ -391,6 +396,7 @@ print_footprint() {
     echo "  - Sistema           : $OS_NAME, kernel $KERNEL"
     echo "  - Governor / f max  : $GOVERNOR / $FREQ_MAX kHz"
     echo "  - SMT / fratelli    : $SMT / CPU [$SIBLINGS]"
+    echo "  - Isolamento        : $ISOLATION"
     echo "  - Clocksource       : $CLOCKSRC (clock_gettime: ${CLK_NS} ns)"
     echo "  - Compilatore       : $GCC_VER"
     echo "  - Flag              : $CFLAGS"

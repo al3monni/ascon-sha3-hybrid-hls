@@ -85,7 +85,7 @@
 /* ------------------------------------------------------------------ */
 
 #define BENCH_DEFAULT_WARMUP      1000     /* iterazioni di riscaldamento, scartate */
-#define BENCH_DEFAULT_ITERS     100000     /* iterazioni effettivamente misurate    */
+#define BENCH_DEFAULT_ITERS      10000     /* iterazioni effettivamente misurate    */
 #define BENCH_SUBBATCHES            10     /* sotto-batch della fase B (mediana)    */
 
 /* Buffer massimo per il messaggio di input. L'input sintetico piu' grande

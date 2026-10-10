@@ -17,6 +17,7 @@ STRUTTURA
   software-latency/
   +-- bench_common.h          infrastruttura di misura condivisa (commentata)
   +-- run_all.sh              compila, esegue e genera i risultati
+  +-- isolate.sh              isolamento del dispositivo (livello 1, Linux nativo)
   +-- README.txt              questo file
   +-- hybrid-test/main.c      main di misura (KAT + casi sintetici)
   +-- sha3-test/main.c
@@ -38,10 +39,10 @@ verifica KAT, statistiche, I/O.
 
 Per ogni caso (algoritmo x dimensione 16/64/256/1024/4096 B) due fasi:
 
-  A) per chiamata : 100000 chiamate, ognuna fra due letture dei tick (registro
+  A) per chiamata : 10000 chiamate, ognuna fra due letture dei tick (registro
                     rdtsc / cntvct_el0, nessuna syscall); ns = tick / f_tick
                     -> distribuzione: media, mediana, sd, min, max, outlier
-  B) batch        : 10 sotto-batch da 10000 chiamate consecutive; contatori letti
+  B) batch        : 10 sotto-batch da 1000 chiamate consecutive; contatori letti
                     SOLO prima e dopo ogni sotto-batch -> MEDIANA di: ns/hash,
                     cicli core reali, istruzioni, IPC, cicli/byte (cpb);
                     dispersione fra sotto-batch (disp%) come indicatore di qualita'
@@ -69,10 +70,30 @@ Requisiti: gcc (pacchetto build-essential), git.
   sudo cpupower frequency-set -g performance      # oppure governor "performance"
 
   cd <repo>/benchmarks/software-latency
-  ./run_all.sh            # completo (~qualche minuto su PC, di piu' sulla Kria)
-  ./run_all.sh quick      # verifica rapida (2000 iterazioni)
+
+  # Linux nativo (portatile, Kria): misura su dispositivo isolato (consigliato)
+  sudo systemctl isolate multi-user.target   # opzionale: chiude la grafica (usa SSH/console)
+  sudo ./isolate.sh run                      # isola -> esegue run_all.sh -> ripristina
+  sudo ./isolate.sh run quick                # verifica rapida
+
+  # WSL (isolamento non possibile: chiudere le app)
+  ./run_all.sh            # completo: 10000 iterazioni per fase
+  ./run_all.sh quick      # verifica rapida (1000 iterazioni)
 
   PLATFORM=nome ./run_all.sh   # forza il nome della cartella dei risultati
+
+ISOLAMENTO (isolate.sh, livello 1, senza riavvio e reversibile)
+  - SMT spento e governor "performance" (ripristinati alla fine)
+  - core di misura = CPU online con indice piu' alto, riservato al benchmark:
+    tutti gli altri processi (user.slice, system.slice, init.scope) e gli
+    interrupt hardware vengono spostati sugli altri core
+  - fermati i servizi automatici (unattended-upgrades, apt timers, snapd,
+    packagekit, fwupd, ...) se attivi; riavviati alla fine
+  - il benchmark gira in una slice dedicata (bench.slice) come utente normale
+  - se interrotto con Ctrl+C il ripristino avviene comunque;
+    in caso di problemi: sudo ./isolate.sh off
+  - restano attivi solo i thread del kernel legati al core (non spostabili
+    senza riavvio: per quello servirebbe isolcpus, "livello 2")
 
 Senza permessi perf (o in WSL, dove la PMU di solito non e' esposta) il
 benchmark gira comunque: le colonne cicli/istruzioni/IPC/cpb valgono "n/a".
@@ -92,11 +113,8 @@ KRIA KV260 (Ubuntu)
 NOTE PER UNA MISURA PULITA
 -------------------------------------------------------------------------------
   - Il report elenca in testa gli "AVVISI SULLA QUALITA' DELLA MISURA".
-  - PC portatile: alimentatore collegato, poche app aperte, e per la durata
-    della misura:
-        echo off | sudo tee /sys/devices/system/cpu/smt/control        # SMT off
-        echo performance | sudo tee /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor
-    (al termine: smt "on", governor di prima, es. schedutil/powersave)
-  - Il processo viene fissato sull'ultimo core (taskset).
+  - PC portatile: alimentatore collegato, appoggiato su superficie rigida.
+  - SMT, governor e isolamento sono gestiti da isolate.sh.
+  - Il processo viene fissato sul core di misura (taskset).
   - L'intestazione di result.txt registra CPU, kernel, governor, SMT,
     clocksource, compilatore, flag, overhead e disponibilita' della PMU.

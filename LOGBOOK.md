@@ -23,6 +23,7 @@ Storico delle modifiche al codice e alla configurazione, dalla base di partenza 
 | [LOG-006](#log-006--import-del-materiale-da-tesi-work--esplorazione-pragma-nel-codice) | 2026-10-09 | Import del materiale da `tesi-work` + esplorazione pragma nel codice | Hybrid, SHA-3, Ascon |
 | [LOG-007](#log-007--benchmark-software-portabile-x86_64--aarch64-fonte-unica-pmu-footprint) | 2026-10-09 | Benchmark software portabile (x86_64 / aarch64): fonte unica, PMU, footprint | Hybrid, SHA-3, Ascon |
 | [LOG-008](#log-008--benchmark-misura-robusta-a-clocksource-lenta-e-smt) | 2026-10-09 | Benchmark: misura robusta a clocksource lenta e SMT | — |
+| [LOG-009](#log-009--benchmark-10000-iterazioni-e-isolamento-del-dispositivo-livello-1) | 2026-10-10 | Benchmark: 10 000 iterazioni e isolamento del dispositivo (livello 1) | — |
 
 ---
 
@@ -227,6 +228,36 @@ Storico delle modifiche al codice e alla configurazione, dalla base di partenza 
 **Verifica.** Container x86: quick run OK e avvisi corretti (il container è rumoroso, quindi scatta l'avviso `disp%`). aarch64 sotto qemu: KAT OK, formato corretto.
 
 **Da fare.** Rifare i run con la nuova metodologia su **tutte e tre** le piattaforme, così sono confrontabili. Sul portatile: SMT disattivato e governor `performance` durante la misura.
+
+---
+
+## LOG-009 — Benchmark: 10 000 iterazioni e isolamento del dispositivo (livello 1)
+
+**Contesto.** Con la metodologia di LOG-008:
+- **x86_64-wsl** è pulito: dispersione < 2.3% (un solo caso al 33%, con mediana comunque coerente). Ibrido vs standalone in cicli: SHA3-256 da +0.2 a +1.7%, SHA3-512 da −0.6 a +2.1%, Ascon da −0.9 a −0.1%.
+- **x86_64-native** (portatile), pur con SMT spento e governor `performance`, ha 6 casi con dispersione fra il 10 e il 55%. Sono consecutivi nel tempo: è un disturbo durato minuti (probabile throttling termico o processi in background). Ascon, misurato per ultimo, è perfetto. L'indicatore `disp%` li ha segnalati correttamente.
+
+**Decisioni (su proposta di A. Monni)**
+1. **10 000 iterazioni** per fase invece di 100 000: statisticamente sufficienti (sotto-batch da 1 000 chiamate) e run 10 volte più corti, quindi meno esposti a riscaldamento e attività di sistema.
+2. **Isolamento del dispositivo**, livello 1 (runtime, senza riavvio): sul core di misura gira solo il benchmark e il resto del sistema è a riposo.
+
+**Modifiche**
+- `run_all.sh`:
+  - 10 000 iterazioni (quick: 1 000);
+  - core di misura passato da `isolate.sh` (`BENCH_CORE`);
+  - riga "Isolamento" nella testata;
+  - avviso "dispositivo NON isolato" su Linux nativo;
+  - `NCPU` letto con `getconf` (le CPU online, non quelle concesse al processo).
+- Nuovo `isolate.sh` (`on` | `off` | `status` | `run`):
+  - SMT spento e governor `performance`;
+  - core di misura riservato: tutti gli altri processi spostati sugli altri core (`systemctl set-property --runtime … AllowedCPUs=` su `user.slice`, `system.slice`, `init.scope`);
+  - interrupt spostati;
+  - servizi automatici fermati;
+  - benchmark eseguito come utente normale in `bench.slice`;
+  - ripristino completo anche con Ctrl+C.
+- Non applicabile in WSL (scheduler di Windows): lì l'unica misura possibile è chiudere le app, ed è dichiarato come limite.
+
+**Verifica.** Sintassi e logica di selezione delle CPU verificate nel container ("0-1" → core 1, altri "0"). `isolate.sh on/off` richiede systemd come PID 1, quindi la prima esecuzione reale avviene sul portatile e sulla Kria.
 
 ---
 
