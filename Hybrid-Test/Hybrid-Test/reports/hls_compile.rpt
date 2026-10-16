@@ -4,7 +4,7 @@
 == Synthesis Summary Report of 'hash_top'
 ================================================================
 + General Information: 
-    * Date:           Thu Jun 25 23:31:36 2026
+    * Date:           Fri Oct 16 12:55:16 2026
     * Version:        2025.1.1 (Build 6214317 on Sep 11 2025)
     * Project:        Hybrid-Test
     * Solution:       hls (Vivado IP Flow Target)
@@ -121,58 +121,58 @@
 | Name                                                 | DSP | Pragma | Variable        | Op        | Impl                     | Latency |
 +------------------------------------------------------+-----+--------+-----------------+-----------+--------------------------+---------+
 | + hash_top                                           | 0   |        |                 |           |                          |         |
-|   icmp_ln411_fu_300_p2                               |     |        | icmp_ln411      | setne     | auto                     | 0       |
-|   sub_ln417_fu_311_p2                                |     |        | sub_ln417       | sub       | fabric                   | 0       |
-|   icmp_ln417_fu_317_p2                               |     |        | icmp_ln417      | seteq     | auto                     | 0       |
-|   select_ln417_fu_323_p3                             |     |        | select_ln417    | select    | auto_sel                 | 0       |
-|   and_ln417_fu_331_p2                                |     |        | and_ln417       | and       | auto                     | 0       |
-|   add_ln417_fu_349_p2                                |     |        | add_ln417       | add       | fabric                   | 0       |
-|   icmp_ln445_fu_398_p2                               |     |        | icmp_ln445      | seteq     | auto                     | 0       |
+|   icmp_ln420_fu_300_p2                               |     |        | icmp_ln420      | setne     | auto                     | 0       |
+|   sub_ln426_fu_311_p2                                |     |        | sub_ln426       | sub       | fabric                   | 0       |
+|   icmp_ln426_fu_317_p2                               |     |        | icmp_ln426      | seteq     | auto                     | 0       |
+|   select_ln426_fu_323_p3                             |     |        | select_ln426    | select    | auto_sel                 | 0       |
+|   and_ln426_fu_331_p2                                |     |        | and_ln426       | and       | auto                     | 0       |
+|   add_ln426_fu_349_p2                                |     |        | add_ln426       | add       | fabric                   | 0       |
+|   icmp_ln454_fu_398_p2                               |     |        | icmp_ln454      | seteq     | auto                     | 0       |
 |   i_10_fu_403_p2                                     |     |        | i_10            | add       | fabric                   | 0       |
 |   j_2_fu_475_p2                                      |     |        | j_2             | add       | fabric                   | 0       |
-|   lshr_ln456_fu_438_p2                               |     |        | lshr_ln456      | lshr      | auto_pipe                | 0       |
-|   xor_ln456_fu_448_p2                                |     |        | xor_ln456       | xor       | auto                     | 0       |
-|   shl_ln456_fu_461_p2                                |     |        | shl_ln456       | shl       | auto_pipe                | 0       |
-|   shl_ln456_1_fu_468_p2                              |     |        | shl_ln456_1     | shl       | auto_pipe                | 0       |
-|   icmp_ln460_fu_490_p2                               |     |        | icmp_ln460      | setlt     | auto                     | 0       |
-|   lshr_ln491_fu_525_p2                               |     |        | lshr_ln491      | lshr      | auto_pipe                | 0       |
-|   shl_ln491_fu_538_p2                                |     |        | shl_ln491       | shl       | auto_pipe                | 0       |
-|   xor_ln495_fu_553_p2                                |     |        | xor_ln495       | xor       | auto                     | 0       |
-|   shl_ln495_fu_581_p2                                |     |        | shl_ln495       | shl       | auto_pipe                | 0       |
-|   xor_ln491_fu_588_p2                                |     |        | xor_ln491       | xor       | auto                     | 0       |
-|   shl_ln491_1_fu_598_p2                              |     |        | shl_ln491_1     | shl       | auto_pipe                | 0       |
-|   add_ln492_fu_615_p2                                |     |        | add_ln492       | add       | fabric                   | 0       |
-|   lshr_ln492_fu_651_p2                               |     |        | lshr_ln492      | lshr      | auto_pipe                | 0       |
-|   xor_ln492_fu_665_p2                                |     |        | xor_ln492       | xor       | auto                     | 0       |
-|   shl_ln492_fu_690_p2                                |     |        | shl_ln492       | shl       | auto_pipe                | 0       |
-|   shl_ln492_1_fu_697_p2                              |     |        | shl_ln492_1     | shl       | auto_pipe                | 0       |
+|   lshr_ln467_fu_438_p2                               |     |        | lshr_ln467      | lshr      | auto_pipe                | 0       |
+|   xor_ln467_fu_448_p2                                |     |        | xor_ln467       | xor       | auto                     | 0       |
+|   shl_ln467_fu_461_p2                                |     |        | shl_ln467       | shl       | auto_pipe                | 0       |
+|   shl_ln467_1_fu_468_p2                              |     |        | shl_ln467_1     | shl       | auto_pipe                | 0       |
+|   icmp_ln471_fu_490_p2                               |     |        | icmp_ln471      | setlt     | auto                     | 0       |
+|   lshr_ln502_fu_525_p2                               |     |        | lshr_ln502      | lshr      | auto_pipe                | 0       |
+|   shl_ln502_fu_538_p2                                |     |        | shl_ln502       | shl       | auto_pipe                | 0       |
+|   xor_ln506_fu_553_p2                                |     |        | xor_ln506       | xor       | auto                     | 0       |
+|   shl_ln506_fu_581_p2                                |     |        | shl_ln506       | shl       | auto_pipe                | 0       |
+|   xor_ln502_fu_588_p2                                |     |        | xor_ln502       | xor       | auto                     | 0       |
+|   shl_ln502_1_fu_598_p2                              |     |        | shl_ln502_1     | shl       | auto_pipe                | 0       |
+|   add_ln503_fu_615_p2                                |     |        | add_ln503       | add       | fabric                   | 0       |
+|   lshr_ln503_fu_651_p2                               |     |        | lshr_ln503      | lshr      | auto_pipe                | 0       |
+|   xor_ln503_fu_665_p2                                |     |        | xor_ln503       | xor       | auto                     | 0       |
+|   shl_ln503_fu_690_p2                                |     |        | shl_ln503       | shl       | auto_pipe                | 0       |
+|   shl_ln503_1_fu_697_p2                              |     |        | shl_ln503_1     | shl       | auto_pipe                | 0       |
 |  + hash_top_Pipeline_init_loop                       | 0   |        |                 |           |                          |         |
-|    icmp_ln400_fu_56_p2                               |     |        | icmp_ln400      | seteq     | auto                     | 0       |
-|    add_ln400_fu_62_p2                                |     |        | add_ln400       | add       | fabric                   | 0       |
+|    icmp_ln409_fu_56_p2                               |     |        | icmp_ln409      | seteq     | auto                     | 0       |
+|    add_ln409_fu_62_p2                                |     |        | add_ln409       | add       | fabric                   | 0       |
 |  + keccakf_asconp12_1                                | 0   |        |                 |           |                          |         |
-|    icmp_ln322_fu_484_p2                              |     |        | icmp_ln322      | seteq     | auto                     | 0       |
-|    icmp_ln322_1_fu_490_p2                            |     |        | icmp_ln322_1    | setne     | auto                     | 0       |
-|    select_ln322_fu_496_p3                            |     |        | select_ln322    | select    | auto_sel                 | 0       |
-|    select_ln322_1_fu_504_p3                          |     |        | select_ln322_1  | select    | auto_sel                 | 0       |
+|    icmp_ln326_fu_484_p2                              |     |        | icmp_ln326      | seteq     | auto                     | 0       |
+|    icmp_ln326_1_fu_490_p2                            |     |        | icmp_ln326_1    | setne     | auto                     | 0       |
+|    select_ln326_fu_496_p3                            |     |        | select_ln326    | select    | auto_sel                 | 0       |
+|    select_ln326_1_fu_504_p3                          |     |        | select_ln326_1  | select    | auto_sel                 | 0       |
 |    nrounds_fu_512_p3                                 |     |        | nrounds         | select    | auto_sel                 | 0       |
-|    select_ln323_fu_520_p3                            |     |        | select_ln323    | select    | auto_sel                 | 0       |
-|    select_ln323_1_fu_528_p3                          |     |        | select_ln323_1  | select    | auto_sel                 | 0       |
+|    select_ln327_fu_520_p3                            |     |        | select_ln327    | select    | auto_sel                 | 0       |
+|    select_ln327_1_fu_528_p3                          |     |        | select_ln327_1  | select    | auto_sel                 | 0       |
 |    chirounds_fu_536_p3                               |     |        | chirounds       | select    | auto_sel                 | 0       |
-|    icmp_ln329_fu_556_p2                              |     |        | icmp_ln329      | seteq     | auto                     | 0       |
-|    add_ln329_fu_561_p2                               |     |        | add_ln329       | add       | fabric                   | 0       |
-|    sparsemux_25_5_8_1_1_U52                          |     |        | zext_ln352_cast | sparsemux | compactencoding_dontcare | 0       |
-|    xor_ln353_fu_567_p2                               |     |        | xor_ln353       | xor       | auto                     | 0       |
-|    xor_ln354_fu_633_p2                               |     |        | xor_ln354       | xor       | auto                     | 0       |
-|    xor_ln355_1_fu_640_p2                             |     |        | xor_ln355_1     | xor       | auto                     | 0       |
-|    xor_ln355_fu_646_p2                               |     |        | xor_ln355       | xor       | auto                     | 0       |
+|    icmp_ln333_fu_556_p2                              |     |        | icmp_ln333      | seteq     | auto                     | 0       |
+|    add_ln333_fu_561_p2                               |     |        | add_ln333       | add       | fabric                   | 0       |
+|    sparsemux_25_5_8_1_1_U52                          |     |        | zext_ln362_cast | sparsemux | compactencoding_dontcare | 0       |
+|    xor_ln363_fu_567_p2                               |     |        | xor_ln363       | xor       | auto                     | 0       |
+|    xor_ln364_fu_633_p2                               |     |        | xor_ln364       | xor       | auto                     | 0       |
+|    xor_ln365_1_fu_640_p2                             |     |        | xor_ln365_1     | xor       | auto                     | 0       |
+|    xor_ln365_fu_646_p2                               |     |        | xor_ln365       | xor       | auto                     | 0       |
 |    icmp_ln156_fu_672_p2                              |     |        | icmp_ln156      | setlt     | auto                     | 0       |
 |    add_ln156_fu_697_p2                               |     |        | add_ln156       | add       | fabric                   | 0       |
 |    sparsemux_49_5_64_1_1_U53                         |     |        | tmp_5           | sparsemux | compactencoding_dontcare | 0       |
 |    xor_ln216_fu_851_p2                               |     |        | xor_ln216       | xor       | auto                     | 0       |
-|    xor_ln367_fu_858_p2                               |     |        | xor_ln367       | xor       | auto                     | 0       |
-|    xor_ln368_fu_865_p2                               |     |        | xor_ln368       | xor       | auto                     | 0       |
-|    xor_ln369_fu_872_p2                               |     |        | xor_ln369       | xor       | auto                     | 0       |
-|    xor_ln370_fu_878_p2                               |     |        | xor_ln370       | xor       | auto                     | 0       |
+|    xor_ln377_fu_858_p2                               |     |        | xor_ln377       | xor       | auto                     | 0       |
+|    xor_ln378_fu_865_p2                               |     |        | xor_ln378       | xor       | auto                     | 0       |
+|    xor_ln379_fu_872_p2                               |     |        | xor_ln379       | xor       | auto                     | 0       |
+|    xor_ln380_fu_878_p2                               |     |        | xor_ln380       | xor       | auto                     | 0       |
 |    xor_ln255_fu_932_p2                               |     |        | xor_ln255       | xor       | auto                     | 0       |
 |    xor_ln255_1_fu_938_p2                             |     |        | xor_ln255_1     | xor       | auto                     | 0       |
 |    xor_ln256_fu_992_p2                               |     |        | xor_ln256       | xor       | auto                     | 0       |
@@ -242,25 +242,25 @@
 |     icmp_ln243_fu_124_p2                             |     |        | icmp_ln243      | seteq     | auto                     | 0       |
 |     add_ln243_fu_130_p2                              |     |        | add_ln243       | add       | fabric                   | 0       |
 |  + hash_top_Pipeline_squeezing_1                     | 0   |        |                 |           |                          |         |
-|    icmp_ln523_fu_71_p2                               |     |        | icmp_ln523      | seteq     | auto                     | 0       |
-|    add_ln523_fu_77_p2                                |     |        | add_ln523       | add       | fabric                   | 0       |
-|    lshr_ln529_fu_104_p2                              |     |        | lshr_ln529      | lshr      | auto_pipe                | 0       |
+|    icmp_ln537_fu_71_p2                               |     |        | icmp_ln537      | seteq     | auto                     | 0       |
+|    add_ln537_fu_77_p2                                |     |        | add_ln537       | add       | fabric                   | 0       |
+|    lshr_ln543_fu_104_p2                              |     |        | lshr_ln543      | lshr      | auto_pipe                | 0       |
 |  + hash_top_Pipeline_squeezing_2                     | 0   |        |                 |           |                          |         |
-|    icmp_ln534_fu_75_p2                               |     |        | icmp_ln534      | seteq     | auto                     | 0       |
-|    add_ln534_fu_81_p2                                |     |        | add_ln534       | add       | fabric                   | 0       |
-|    lshr_ln540_fu_103_p2                              |     |        | lshr_ln540      | lshr      | auto_pipe                | 0       |
+|    icmp_ln548_fu_75_p2                               |     |        | icmp_ln548      | seteq     | auto                     | 0       |
+|    add_ln548_fu_81_p2                                |     |        | add_ln548       | add       | fabric                   | 0       |
+|    lshr_ln554_fu_103_p2                              |     |        | lshr_ln554      | lshr      | auto_pipe                | 0       |
 |  + hash_top_Pipeline_squeezing_3                     | 0   |        |                 |           |                          |         |
-|    icmp_ln545_fu_75_p2                               |     |        | icmp_ln545      | seteq     | auto                     | 0       |
-|    add_ln545_fu_81_p2                                |     |        | add_ln545       | add       | fabric                   | 0       |
-|    lshr_ln551_fu_103_p2                              |     |        | lshr_ln551      | lshr      | auto_pipe                | 0       |
+|    icmp_ln559_fu_75_p2                               |     |        | icmp_ln559      | seteq     | auto                     | 0       |
+|    add_ln559_fu_81_p2                                |     |        | add_ln559       | add       | fabric                   | 0       |
+|    lshr_ln565_fu_103_p2                              |     |        | lshr_ln565      | lshr      | auto_pipe                | 0       |
 |  + hash_top_Pipeline_squeezing_4                     | 0   |        |                 |           |                          |         |
-|    icmp_ln556_fu_75_p2                               |     |        | icmp_ln556      | seteq     | auto                     | 0       |
-|    add_ln556_fu_81_p2                                |     |        | add_ln556       | add       | fabric                   | 0       |
-|    lshr_ln562_fu_103_p2                              |     |        | lshr_ln562      | lshr      | auto_pipe                | 0       |
+|    icmp_ln570_fu_75_p2                               |     |        | icmp_ln570      | seteq     | auto                     | 0       |
+|    add_ln570_fu_81_p2                                |     |        | add_ln570       | add       | fabric                   | 0       |
+|    lshr_ln576_fu_103_p2                              |     |        | lshr_ln576      | lshr      | auto_pipe                | 0       |
 |  + hash_top_Pipeline_output_loop                     | 0   |        |                 |           |                          |         |
-|    icmp_ln507_fu_100_p2                              |     |        | icmp_ln507      | setlt     | auto                     | 0       |
-|    add_ln507_fu_106_p2                               |     |        | add_ln507       | add       | fabric                   | 0       |
-|    lshr_ln516_fu_151_p2                              |     |        | lshr_ln516      | lshr      | auto_pipe                | 0       |
+|    icmp_ln518_fu_100_p2                              |     |        | icmp_ln518      | setlt     | auto                     | 0       |
+|    add_ln518_fu_106_p2                               |     |        | add_ln518       | add       | fabric                   | 0       |
+|    lshr_ln527_fu_151_p2                              |     |        | lshr_ln527      | lshr      | auto_pipe                | 0       |
 +------------------------------------------------------+-----+--------+-----------------+-----------+--------------------------+---------+
 
 
@@ -302,22 +302,22 @@
 | INLINE          |                                           | hash.c:224 in diffusion                      |
 | ARRAY_PARTITION | variable=bc type=complete dim=1           | hash.c:233 in diffusion, bc                  |
 | PIPELINE        | ii=1                                      | hash.c:248 in diffusion                      |
-| INLINE          | off                                       | hash.c:279 in keccakf_asconp12               |
-| ARRAY_PARTITION | variable=keccakf_rndc type=complete dim=1 | hash.c:306 in keccakf_asconp12, keccakf_rndc |
-| ARRAY_PARTITION | variable=asconp_rndc type=complete dim=1  | hash.c:307 in keccakf_asconp12, asconp_rndc  |
-| LOOP_TRIPCOUNT  | min=12 max=24                             | hash.c:338 in keccakf_asconp12               |
-| INLINE          |                                           | hash.c:395 in hash_init                      |
-| PIPELINE        | ii=1                                      | hash.c:402 in hash_init                      |
-| INLINE          |                                           | hash.c:438 in hash_update                    |
-| LOOP_TRIPCOUNT  | min=0 max=256                             | hash.c:451 in hash_update                    |
-| INLINE          |                                           | hash.c:483 in hash_final                     |
-| PIPELINE        | ii=1                                      | hash.c:513 in hash_final                     |
-| LOOP_TRIPCOUNT  | min=32 max=64                             | hash.c:514 in hash_final                     |
-| PIPELINE        | ii=1                                      | hash.c:527 in hash_final                     |
-| PIPELINE        | ii=1                                      | hash.c:538 in hash_final                     |
-| PIPELINE        | ii=1                                      | hash.c:549 in hash_final                     |
-| PIPELINE        | ii=1                                      | hash.c:560 in hash_final                     |
-| INLINE          |                                           | hash.c:578 in hash                           |
+| INLINE          | off                                       | hash.c:278 in keccakf_asconp12               |
+| ARRAY_PARTITION | variable=keccakf_rndc type=complete dim=1 | hash.c:310 in keccakf_asconp12, keccakf_rndc |
+| ARRAY_PARTITION | variable=asconp_rndc type=complete dim=1  | hash.c:311 in keccakf_asconp12, asconp_rndc  |
+| LOOP_TRIPCOUNT  | min=12 max=24                             | hash.c:348 in keccakf_asconp12               |
+| INLINE          |                                           | hash.c:404 in hash_init                      |
+| PIPELINE        | ii=1                                      | hash.c:411 in hash_init                      |
+| INLINE          |                                           | hash.c:447 in hash_update                    |
+| LOOP_TRIPCOUNT  | min=0 max=256                             | hash.c:462 in hash_update                    |
+| INLINE          |                                           | hash.c:494 in hash_final                     |
+| PIPELINE        | ii=1                                      | hash.c:524 in hash_final                     |
+| LOOP_TRIPCOUNT  | min=32 max=64                             | hash.c:525 in hash_final                     |
+| PIPELINE        | ii=1                                      | hash.c:541 in hash_final                     |
+| PIPELINE        | ii=1                                      | hash.c:552 in hash_final                     |
+| PIPELINE        | ii=1                                      | hash.c:563 in hash_final                     |
+| PIPELINE        | ii=1                                      | hash.c:574 in hash_final                     |
+| INLINE          |                                           | hash.c:592 in hash                           |
 +-----------------+-------------------------------------------+----------------------------------------------+
 
 
