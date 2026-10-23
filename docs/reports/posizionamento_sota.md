@@ -4,7 +4,12 @@ Acceleratori hardware su FPGA per **Ascon-Hash256** (NIST SP 800-232), **SHA3-25
 
 > **Stato del documento:** bozza. Le voci ⏳ sono in attesa di dati (sintesi in corso, co-simulazioni dedicate, fonti momentaneamente non disponibili).
 
-**Legenda.** `*` = valore **ricalcolato** da noi con TP = r · f / c (§2), non dichiarato dagli autori; ⚠ = dato da usare **con cautela** (motivo nel testo sotto la tabella); n.d. = **non dichiarato** dalla fonte; ⏳ = **da aggiornare**. `r/c` = round per ciclo; *c* = cicli per blocco; TP = throughput su messaggi lunghi.
+**Legenda**
+- `*` valore **ricalcolato** da noi con TP = r · f / c (§2), non dichiarato dagli autori.
+- ⚠ dato da usare **con cautela**; il motivo è nelle note sotto la tabella.
+- n.d. dato **non dichiarato** dalla fonte.
+- ⏳ dato **da aggiornare**.
+- `r/c` round per ciclo; *c* cicli per blocco; TP throughput su messaggi lunghi.
 
 ---
 
@@ -25,23 +30,25 @@ Acceleratori hardware su FPGA per **Ascon-Hash256** (NIST SP 800-232), **SHA3-25
 | Khan et al. [3] | 2 r/c | Virtex-7 | 1290 | n.d. | 224.56 | 6* | 2395.3* | solo hash ⚠ |
 | Khan et al. [3] | 4 r/c | Virtex-7 | 2550 | n.d. | 162.68 | 3* | 3470.5* | solo hash ⚠ |
 
-Il fronte Artix-7 include RECO-ASCON, implementato su una Zynq-7020, la cui logica programmabile è quella di un Artix-7. Le due edizioni del benchmark GMU usano device Artix-7 diversi (xc7a12t-3 per il Round 2, xc7a100t-2 per i finalisti); per i finalisti *c* è ricavato da TP e Fmax dichiarati. I core dei progettisti (Graz) non compaiono perché, nella stessa famiglia, sono dominati dai core GMU2; il loro successore, ascon-verilog, è presente come risintesi in Tabella 2.
+- RECO-ASCON è su Zynq-7020, la cui logica programmabile è un Artix-7: per questo sta sul fronte Artix-7.
+- Le due edizioni GMU usano device Artix-7 diversi: xc7a12t-3 (Round 2) e xc7a100t-2 (finalisti). Per i finalisti *c* è ricavato da TP e Fmax dichiarati.
+- I core dei progettisti (Graz) sono dominati dai GMU2 nella stessa famiglia. Il loro successore, ascon-verilog, è in Tabella 2 come risintesi.
+- ⚠ Khan et al.: il TP pubblicato (697.5 / 1108.2 / 1488.4 Mbps) è su un singolo messaggio di 256 bit. *c* è ricavato dalla formula di latenza degli autori (96/z + 4 cicli). Tool e tipo di dato non dichiarati.
+- ⚠ RECO-ASCON: 200 MHz è la frequenza di funzionamento sulla PYNQ, non un'Fmax. *c* = 25 è dichiarato (N = 25M + 78).
 
-Per Khan et al. il TP pubblicato (697.5, 1108.2 e 1488.4 Mbps) è misurato su un singolo messaggio di 256 bit; il *c* in tabella è ricavato dalla formula di latenza degli autori (96/z + 4 cicli), mentre tool e tipo di dato (sintesi o post-route) non sono dichiarati. Per RECO-ASCON, 200 MHz è la frequenza di funzionamento sulla PYNQ e non un'Fmax; *c* = 25 è invece dichiarato dagli autori (N = 25M + 78).
+**Tabella 2 — Core di riferimento risintetizzati sulla xck26 (post-route, prestazione di picco)**
 
-**Tabella 2 — Core di riferimento risintetizzati sulla xck26 (post-route)**
+| Core | Vincolo | LUT | FF | BRAM / DSP | Fmax (MHz) | c | TP @Fmax (Mbps) |
+|---|---|---|---|---|---|---|---|
+| ascon-verilog v4, solo hash | 1.4 ns | 1330 | 336 | 0 / 0 | 547.3 | 13 | 2694.4* |
+| GMU2 Ascon-128 x1 [8] | 1.8 ns | 1327 | 839 | 0 / 0 | 535.3 ⚠ | 13 | 2635.3* |
+| GMU2 Ascon-128 x2 [8] | ⏳ | ⏳ | ⏳ | ⏳ | ⏳ | ⏳ | ⏳ |
 
-| Core | Vincolo | LUT | FF | BRAM / DSP | Fmax (MHz) | c | TP @100 MHz (Mbps) | TP @Fmax (Mbps) |
-|---|---|---|---|---|---|---|---|---|
-| ascon-verilog v4, solo hash | 10 ns | 1211 | 336 | 0 / 0 | 216.5 ⚠ | 13 | 492.3* | – |
-| ascon-verilog v4, solo hash | 1.4 ns | 1330 | 336 | 0 / 0 | 547.3 | 13 | – | 2694.4* |
-| GMU2 Ascon-128 x1 [8] | 10 ns | 1222 | 839 | 0 / 0 | 273.7 ⚠ | 13 | 492.3* | – |
-| GMU2 Ascon-128 x1 [8] | 1.8 ns | 1327 | 839 | 0 / 0 | 535.3 ⚠ | 13 | – | 2635.3* |
-| GMU2 Ascon-128 x2 [8] | ⏳ | ⏳ | ⏳ | ⏳ | ⏳ | ⏳ | ⏳ | ⏳ |
-
-Le righe a 10 ns danno area e TP alla stessa frequenza del nostro acceleratore; la loro Fmax è una stima pessimistica, perché con un vincolo largo il tool non spinge l'ottimizzazione, ed è confrontabile solo con quella del nostro acceleratore, ottenuta nelle stesse condizioni. Le righe con il vincolo più stretto danno la prestazione di picco. Per ascon-verilog la ricerca è stata spinta fino a 1.4 ns: tra 2.0 e 1.4 ns la stima oscilla tra 518.9 e 547.3 MHz per la normale variabilità del place and route, e il percorso critico è nella logica di controllo (dalla FSM al contatore), non nella permutazione. Per GMU2 la ricerca si è fermata a 1.8 ns, dove lo slack è appena negativo (−0.068 ns): 535.3 MHz è quindi vicino al limite ma non verificato oltre.
-
-Il *c* = 13 di ascon-verilog è ricavato dai cicli pubblicati dal progettista (118 cicli per 32 B, 1730 per 1024 B); quello di GMU2 è dichiarato nel benchmark GMU Round 2. GMU2 include l'AEAD e implementa Ascon-Hash v1.2, che ha la stessa permutazione e lo stesso rate di Hash256. Il Verilog "x2" pubblicato nel repository BlueLight è generato con `UNROLL_FACTOR=1` ed è quindi identico a x1: la variante x2 richiede una rigenerazione con il compilatore Bluespec.
+- ascon-verilog: tra 2.0 e 1.4 ns l'Fmax stimata oscilla tra 518.9 e 547.3 MHz (variabilità del place and route). Percorso critico nella logica di controllo (FSM → contatore), non nella permutazione.
+- ⚠ GMU2 x1: ricerca fermata a 1.8 ns, con slack appena negativo (−0.068 ns). Valore vicino al limite, non verificato oltre.
+- *c* = 13: per ascon-verilog è ricavato dai cicli pubblicati dal progettista (118 per 32 B, 1730 per 1024 B); per GMU2 è dichiarato nel benchmark GMU Round 2.
+- GMU2 include l'AEAD e implementa Ascon-Hash v1.2 (stessa permutazione e stesso rate di Hash256).
+- GMU2 x2: il Verilog "x2" pubblicato in BlueLight è generato con `UNROLL_FACTOR=1`, identico a x1. Serve una rigenerazione con il compilatore Bluespec.
 
 **Tabella 3 — Nostro acceleratore (stato attuale; Vitis HLS 2025.1, xck26, 10 ns, post-route)**
 
@@ -50,7 +57,11 @@ Il *c* = 13 di ascon-verilog è ricavato dai cicli pubblicati dal progettista (1
 | Ascon standalone (non è un riferimento) | 1200 | 744 | 4 / 0 | 211.8* | 183 (0 B) · 338 (23 B) | ⏳ | ⏳ |
 | **Ibrido** (area condivisa) | **3281** | **2215** | **10 / 0** | **162.1*** | ⏳ | ⏳ | ⏳ |
 
-Le tre varianti hanno ricevuto la stessa ottimizzazione con sole pragma, senza ottimizzazioni logiche, e accettano input fino a 256 B. L'Fmax è ricavata come 1000 / periodo post-route riportato da Vitis (4.722 ns per Ascon, 6.169 ns per l'ibrido). Le BRAM contengono la RAM di stato: la `union` sullo stato impedisce di mapparla su registri, mentre i core di riferimento non usano BRAM. Il report di co-simulazione dell'ibrido aggrega minimo, media e massimo su quattro messaggi di test (SHA3-256 32 B, SHA3-512 255 B, Ascon 23 B, Ascon 0 B), per cui la latenza in modalità Ascon non è separabile e richiede una co-simulazione dedicata. Il core Ascon è stato re-implementato il 23/10/2026, l'ibrido il 25/06/2026; da giugno il codice è cambiato solo nei commenti (LOGBOOK, LOG-006), e i due core standalone re-implementati riproducono esattamente i valori di giugno.
+- Stessa ottimizzazione con sole pragma per le tre varianti, nessuna ottimizzazione logica. Input massimo 256 B.
+- Fmax* = 1000 / periodo post-route riportato da Vitis: 4.722 ns (Ascon), 6.169 ns (ibrido).
+- Le BRAM contengono la RAM di stato: la `union` impedisce di mapparla su registri. I core di riferimento non usano BRAM.
+- Il report di co-simulazione dell'ibrido aggrega min, media e max su 4 messaggi (SHA3-256 32 B, SHA3-512 255 B, Ascon 23 B, Ascon 0 B): la latenza in modalità Ascon richiede una co-simulazione dedicata.
+- Date: Ascon re-implementato il 23/10/2026, ibrido il 25/06/2026. Da giugno il codice è cambiato solo nei commenti (LOGBOOK, LOG-006); gli standalone re-implementati riproducono i valori di giugno.
 
 ### 1.2 SHA3-256 / SHA3-512
 
@@ -63,18 +74,21 @@ Le tre varianti hanno ricevuto la stessa ottimizzazione con sole pragma, senza o
 | Choudhary et al. [10] | 1 r/c | Artix-7 | 2970 | 1607 | 244.31 | 25* | 10632.4* | 5628.9* | solo permutazione ⚠ |
 | Choudhary et al. [10] | 1 r/c | Kintex-7 | 2970 | 1607 | 313.47 | 25* | 13642.2* | 7222.3* | solo permutazione ⚠ |
 
-Ogni famiglia ha un solo punto, tranne Artix-7, dove GMU SHA3-v1 e Choudhary rappresentano i due estremi del compromesso area/TP. Per Kerckhof et al. il tool è ISE 12.1, non è dichiarato se i valori siano post-route e l'Fmax si riferisce all'opzione di sintesi "area". Choudhary et al. implementano la sola permutazione Keccak-p[1600,24], all'interno di un AEAD Ascon-Keccak, senza padding né I/O; il loro TP dichiarato (20062.6 Mbps su Kintex-7) usa 1600 bit per permutazione, cioè l'intero stato invece del rate, e il *c* in tabella è ricavato da quel valore. Con così pochi punti confrontabili, il riferimento principale per SHA-3 è il core risintetizzato in Tabella 5.
+- Un solo punto per famiglia, tranne Artix-7, dove GMU SHA3-v1 e Choudhary sono i due estremi del compromesso area/TP.
+- ⚠ Kerckhof et al.: tool ISE 12.1; post-route non dichiarato; Fmax con l'opzione di sintesi "area".
+- ⚠ Choudhary et al.: sola permutazione Keccak-p[1600,24] dentro un AEAD Ascon-Keccak, senza padding né I/O. Il TP dichiarato (20062.6 Mbps su Kintex-7) usa 1600 bit per permutazione invece del rate; *c* è ricavato da quel valore.
+- Con così pochi punti confrontabili, il riferimento principale per SHA-3 è il core in Tabella 5.
 
-**Tabella 5 — Core di riferimento risintetizzato sulla xck26 (Keccak team high-speed core v3.1, post-route)**
+**Tabella 5 — Core di riferimento risintetizzato sulla xck26 (Keccak team high-speed core v3.1, post-route, prestazione di picco)**
 
-| Core | Vincolo | LUT | FF | BRAM / DSP | Fmax (MHz) | c | TP @100 MHz (Mbps) | TP @Fmax (Mbps) |
-|---|---|---|---|---|---|---|---|---|
-| SHA3-256 | 10 ns | 4100 | 2708 | 0 / 0 | 171.5 ⚠ | 24 | 4533.3* | – |
-| SHA3-256 | 2.2 ns | 4444 | 2708 | 0 / 0 | 401.6 | 24 | – | 18205.9* |
-| SHA3-512 | 10 ns | 3634 | 2194 | 0 / 0 | 185.1 ⚠ | 24 | 2400.0* | – |
-| SHA3-512 | 2.0 ns | 4162 | 2246 | 0 / 0 | 395.4 | 24 | – | 9489.6* |
+| Core | Vincolo | LUT | FF | BRAM / DSP | Fmax (MHz) | c | TP @Fmax (Mbps) |
+|---|---|---|---|---|---|---|---|
+| SHA3-256 | 2.2 ns | 4444 | 2708 | 0 / 0 | 401.6 | 24 | 18205.9* |
+| SHA3-512 | 2.0 ns | 4162 | 2246 | 0 / 0 | 395.4 | 24 | 9489.6* |
 
-Il core lavora a 1 round per ciclo, con rate parametrico e padding a carico dell'host; *c* = 24 è misurato in simulazione. La lettura delle righe a 10 ns è la stessa della Tabella 2. Il timing non chiude da 2.5 ns in giù: l'Fmax è il miglior valore stimato tra le passate, e il percorso critico è un round della permutazione (4 livelli di logica). I FF corrispondono ai 1600 bit di stato, più il buffer d'ingresso da *r* bit, più il controllo.
+- 1 round per ciclo, rate parametrico, padding a carico dell'host; *c* = 24 misurato in simulazione.
+- Il timing non chiude da 2.5 ns in giù: l'Fmax è il miglior valore stimato tra le passate. Percorso critico: un round della permutazione (4 livelli di logica).
+- FF = 1600 bit di stato + buffer d'ingresso da *r* bit + controllo.
 
 **Tabella 6 — Nostro acceleratore (stesse condizioni della Tabella 3)**
 
@@ -83,7 +97,9 @@ Il core lavora a 1 round per ciclo, con rate parametrico e padding a carico dell
 | SHA-3 standalone (non è un riferimento) | 2214 | 1551 | 10 / 0 | 166.0* | 3449 (SHA3-256, 32 B) · 14250 (SHA3-512, 255 B) | ⏳ | ⏳ |
 | **Ibrido** (area condivisa) | **3281** | **2215** | **10 / 0** | **162.1*** | 14352 (SHA3-512, 255 B) | ⏳ | ⏳ |
 
-L'Fmax è ricavata dal periodo post-route (6.023 ns per SHA-3, 6.169 ns per l'ibrido); il core SHA-3 è stato re-implementato il 23/10/2026. La latenza è dell'ordine delle migliaia di cicli per messaggio, contro i 24 cicli per blocco del core di riferimento, ed è coerente con il collo di bottiglia della RAM di stato a due porte (backlog B-01). La latenza dell'ibrido per SHA3-256 non è separabile, per lo stesso motivo indicato sotto la Tabella 3.
+- Fmax* = 1000 / periodo post-route: 6.023 ns (SHA-3), 6.169 ns (ibrido). SHA-3 re-implementato il 23/10/2026.
+- Latenza nell'ordine delle migliaia di cicli per messaggio, contro i 24 cicli per blocco del riferimento: coerente con il collo di bottiglia della RAM di stato a 2 porte (backlog B-01).
+- Latenza dell'ibrido per SHA3-256 non separabile (vedi Tabella 3).
 
 ### 1.3 HLS
 
@@ -96,7 +112,10 @@ L'Fmax è ricavata dal periodo post-route (6.023 ns per SHA-3, 6.169 ns per l'ib
 | AMD Vitis Security Library [16] | SHA3-512 | n.d. ⚠ | 39794 | 32994 | 316.25 ⚠ | 1096 | 166.2* | vendor |
 | AMD Vitis Security Library, sulla xck26 | SHA3-256/512 | xck26 | ⏳ | ⏳ | ⏳ | ⏳ | ⏳ | risintesi prevista |
 
-Urbano-Molano & Velasco-Medina usano Vivado HLS 2020.1, e il testo e la Tab. III del loro lavoro riportano riduzioni di area incoerenti tra loro. La libreria AMD non dichiara il device (il progetto di test è configurato per la scheda vck190, Versal), né se il periodo di clock sia una stima di sintesi o un valore post-route: non può quindi essere collocata su un fronte di Pareto e resta come riferimento HLS del vendor, in attesa della risintesi sulla xck26. Non è stata trovata alcuna implementazione HLS di Ascon-Hash. È noto in letteratura che un core RTL scritto a mano supera la stessa architettura in HLS: per Keccak su Virtex-6 il rapporto di throughput/area RTL/HLS è 1.84 [17].
+- ⚠ Urbano-Molano & Velasco-Medina: Vivado HLS 2020.1; riduzioni di area incoerenti tra testo e Tab. III.
+- ⚠ AMD: device non dichiarato (progetto di test configurato per vck190, Versal); non dichiarato se il periodo sia stima di sintesi o post-route. Non collocabile su un fronte di Pareto: resta come riferimento HLS del vendor, in attesa della risintesi sulla xck26.
+- Nessuna implementazione HLS di Ascon-Hash trovata.
+- Un core RTL scritto a mano supera la stessa architettura in HLS: per Keccak su Virtex-6, throughput/area RTL/HLS = 1.84 [17].
 
 ---
 
@@ -141,6 +160,7 @@ Non è stato trovato un datapath condiviso Keccak-f / Ascon-p per l'hash, con l'
 
 | Fonte | Incoerenza |
 |---|---|
+| RECO-HCON [4] | Il TP ASIC a 667 MHz (3.16 Gbps) viene attribuito all'FPGA da una survey (arXiv 2304.06222) |
 | Choudhary et al. [10] | TP calcolato sull'intero stato (1600 bit), non sul rate |
 | Khan et al. [3] | TP misurato su un messaggio fisso di 256 bit |
 | Kandi et al. [6] | Ascon-Hash descritto con b = 6 round, contro i 12 della specifica |
