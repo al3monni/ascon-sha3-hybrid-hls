@@ -15,12 +15,9 @@ Acceleratori hardware per **Ascon-Hash256** (NIST SP 800-232), **SHA3-256** e **
 
 ---
 
-## 1. Perimetro e definizioni
+## 1. Definizioni
 
-- **Perimetro:** solo FPGA. I lavori ASIC sono esclusi. Algoritmi: Ascon-Hash256 (equivalente in costo hardware ad Ascon-Hash v1.2, vedi §3.3), SHA3-256 e SHA3-512.
-- **LUT / FF:** look-up table a 6 ingressi e flip-flop. Sono le unità d'area usate in tutto il documento.
-- **BRAM / DSP:** blocchi di memoria e moltiplicatori dedicati.
-- **Slice / CLB:** gruppi di LUT e FF. Una slice 7-series contiene 4 LUT; un CLB UltraScale+ ne contiene 8. **Non** si convertono in LUT (§3.1).
+- **AEAD (Authenticated Encryption with Associated Data):** cifratura autenticata, cioè cifratura più tag di integrità. Molti core Ascon implementano AEAD e hash insieme, quindi la loro area include logica che un core solo hash non ha.
 - **Rate *r*:** bit di messaggio assorbiti per blocco. Ascon-Hash: 64; SHA3-256: 1088; SHA3-512: 576.
 - **Cicli/blocco *c*:** cicli di clock tra l'assorbimento di due blocchi consecutivi, a regime.
 - **Throughput su messaggi lunghi:** **TP = r · f / c**, con *f* la frequenza di clock. È la definizione dei benchmark GMU; trascura i costi di inizializzazione e finalizzazione.
