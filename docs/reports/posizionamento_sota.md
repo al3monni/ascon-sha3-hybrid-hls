@@ -5,7 +5,7 @@ Acceleratori hardware su FPGA per **Ascon-Hash256** (NIST SP 800-232), **SHA3-25
 > **Stato del documento:** bozza. Le voci ⏳ sono in attesa di dati (sintesi in corso, co-simulazioni dedicate, fonti momentaneamente non disponibili).
 
 **Legenda**
-- `*` valore **ricalcolato** da noi con TP = r · f / c (§2), non dichiarato dagli autori.
+- `*` valore **ricalcolato** da noi con TP = r · f / c (§1), non dichiarato dagli autori.
 - ⚠ dato da usare **con cautela**; il motivo è nelle note sotto la tabella.
 - n.d. dato **non dichiarato** dalla fonte.
 - ⏳ dato **da aggiornare**.
@@ -13,9 +13,22 @@ Acceleratori hardware su FPGA per **Ascon-Hash256** (NIST SP 800-232), **SHA3-25
 
 ---
 
-## 1. Risultati
+## 1. Definizioni
 
-### 1.1 Ascon-Hash256
+- **AEAD** (Authenticated Encryption with Associated Data): cifratura autenticata, cioè cifratura più un tag di integrità. Molti core Ascon implementano AEAD e hash insieme, e la loro area include logica che un core solo hash non ha.
+- **Rate *r*:** bit di messaggio assorbiti per blocco: 64 per Ascon-Hash, 1088 per SHA3-256, 576 per SHA3-512.
+- **Cicli per blocco *c*:** cicli di clock tra l'assorbimento di due blocchi consecutivi, a regime.
+- **Throughput su messaggi lunghi (TP):** TP = r · f / c, con *f* frequenza di clock. È la definizione dei benchmark GMU.
+- **Latenza:** cicli necessari per elaborare un intero messaggio di lunghezza data.
+- **Fmax:** massima frequenza di clock alla quale il design rispetta i vincoli di timing. Nelle nostre risintesi è il massimo di 1000 / (T − WNS) su una serie di periodi di clock T, dove WNS è lo slack peggiore del percorso critico.
+- **Post-route:** valori ottenuti dopo place and route, cioè i più affidabili.
+- **Out-of-context (OOC):** implementazione del core senza assegnare i pin di I/O.
+
+---
+
+## 2. Risultati
+
+### 2.1 Ascon-Hash256
 
 **Tabella 1 — Valori pubblicati (solo punti del fronte di Pareto per famiglia FPGA)**
 
@@ -63,7 +76,7 @@ Acceleratori hardware su FPGA per **Ascon-Hash256** (NIST SP 800-232), **SHA3-25
 - Il report di co-simulazione dell'ibrido aggrega min, media e max su 4 messaggi (SHA3-256 32 B, SHA3-512 255 B, Ascon 23 B, Ascon 0 B): la latenza in modalità Ascon richiede una co-simulazione dedicata.
 - Date: Ascon re-implementato il 23/10/2026, ibrido il 25/06/2026. Da giugno il codice è cambiato solo nei commenti (LOGBOOK, LOG-006); gli standalone re-implementati riproducono i valori di giugno.
 
-### 1.2 SHA3-256 / SHA3-512
+### 2.2 SHA3-256 / SHA3-512
 
 **Tabella 4 — Valori pubblicati (solo punti del fronte di Pareto per famiglia FPGA)**
 
@@ -101,7 +114,7 @@ Acceleratori hardware su FPGA per **Ascon-Hash256** (NIST SP 800-232), **SHA3-25
 - Latenza nell'ordine delle migliaia di cicli per messaggio, contro i 24 cicli per blocco del riferimento: coerente con il collo di bottiglia della RAM di stato a 2 porte (backlog B-01).
 - Latenza dell'ibrido per SHA3-256 non separabile (vedi Tabella 3).
 
-### 1.3 HLS
+### 2.3 HLS
 
 **Tabella 7 — Implementazioni HLS pubblicate**
 
@@ -118,17 +131,6 @@ Acceleratori hardware su FPGA per **Ascon-Hash256** (NIST SP 800-232), **SHA3-25
 - Un core RTL scritto a mano supera la stessa architettura in HLS: per Keccak su Virtex-6, throughput/area RTL/HLS = 1.84 [17].
 
 ---
-
-## 2. Definizioni
-
-- **AEAD** (Authenticated Encryption with Associated Data): cifratura autenticata, cioè cifratura più un tag di integrità. Molti core Ascon implementano AEAD e hash insieme, e la loro area include logica che un core solo hash non ha.
-- **Rate *r*:** bit di messaggio assorbiti per blocco: 64 per Ascon-Hash, 1088 per SHA3-256, 576 per SHA3-512.
-- **Cicli per blocco *c*:** cicli di clock tra l'assorbimento di due blocchi consecutivi, a regime.
-- **Throughput su messaggi lunghi (TP):** TP = r · f / c, con *f* frequenza di clock. È la definizione dei benchmark GMU.
-- **Latenza:** cicli necessari per elaborare un intero messaggio di lunghezza data.
-- **Fmax:** massima frequenza di clock alla quale il design rispetta i vincoli di timing. Nelle nostre risintesi è il massimo di 1000 / (T − WNS) su una serie di periodi di clock T, dove WNS è lo slack peggiore del percorso critico.
-- **Post-route:** valori ottenuti dopo place and route, cioè i più affidabili.
-- **Out-of-context (OOC):** implementazione del core senza assegnare i pin di I/O.
 
 ## 3. Cosa offre la letteratura
 
