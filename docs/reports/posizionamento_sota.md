@@ -20,7 +20,7 @@ Acceleratori hardware per **Ascon-Hash256** (NIST SP 800-232), **SHA3-256** e **
 - **AEAD (Authenticated Encryption with Associated Data):** cifratura autenticata, cioè cifratura più tag di integrità. Molti core Ascon implementano AEAD e hash insieme, quindi la loro area include logica che un core solo hash non ha.
 - **Rate *r*:** bit di messaggio assorbiti per blocco. Ascon-Hash: 64; SHA3-256: 1088; SHA3-512: 576.
 - **Cicli/blocco *c*:** cicli di clock tra l'assorbimento di due blocchi consecutivi, a regime.
-- **Throughput su messaggi lunghi:** **TP = r · f / c**, con *f* la frequenza di clock. È la definizione dei benchmark GMU; trascura i costi di inizializzazione e finalizzazione.
+- **Throughput su messaggi lunghi:** **TP = r · f / c**, con *f* la frequenza di clock. È la definizione dei benchmark GMU.
 - **Latenza:** cicli necessari per elaborare un intero messaggio di lunghezza data.
 - **Fmax:** massima frequenza di clock alla quale il design rispetta i vincoli di timing. Nelle nostre risintesi è il massimo di 1000 / (T − WNS) su una serie di periodi di clock T. WNS è lo slack peggiore sul percorso critico.
 - **Post-route:** valori dopo place and route, cioè i più affidabili. **Out-of-context (OOC):** il core viene implementato senza assegnare i pin di I/O.
@@ -28,7 +28,7 @@ Acceleratori hardware per **Ascon-Hash256** (NIST SP 800-232), **SHA3-256** e **
 ## 2. Cosa offre la letteratura
 
 **Dove abbonda**
-- SHA-3 ad alto throughput (round srotolati, pipelining, elaborazione di più messaggi in parallelo) su **Virtex-5/6**, con area espressa **solo in slice**.
+- SHA-3 su **Virtex-5/6**, con area espressa **solo in slice**.
 - Ascon in modalità **AEAD**.
 - **Benchmark delle competizioni** (SHA-3, CAESAR, NIST LWC).
 
@@ -36,17 +36,17 @@ Acceleratori hardware per **Ascon-Hash256** (NIST SP 800-232), **SHA3-256** e **
 - SHA-3 su 7-series e UltraScale+ con area in LUT.
 - Ascon-Hash come core dedicato: quasi sempre è integrato in un core AEAD.
 - Ascon-Hash256 secondo SP 800-232 (standard di agosto 2025).
-- Implementazioni HLS curate. Quelle trovate richiedono fino a migliaia di cicli per blocco.
+- Implementazioni HLS curate.
 
 **Cosa manca**
 - Un **datapath condiviso Keccak-f / Ascon-p** per l'hash, in RTL o HLS (§7).
 - **Ascon-Hash in HLS.**
 
 **Dove non è convincente** (dettaglio in Appendice A)
-- **Definizioni di throughput diverse:** su un messaggio fisso (Khan), sull'intero stato invece che sul rate (Choudhary), su "bit per ciclo" esclusa l'inizializzazione (CAST).
-- **Metodologia non dichiarata:** dati di sintesi o post-route non distinguibili.
-- **Frequenza di funzionamento presentata al posto dell'Fmax:** Crypto-RV, RECO-ASCON, *Unified SHA-3/SHAKE*.
-- **Incoerenze interne** tra abstract, testo e tabelle, e dati ASIC attribuiti all'FPGA da una survey (RECO-HCON).
+- Definizioni di throughput diverse
+- Dati di sintesi o post-route non distinguibili.
+- Frequenza di funzionamento presentata al posto dell'Fmax: Crypto-RV, RECO-ASCON, *Unified SHA-3/SHAKE*.
+- Incoerenze interne tra abstract, testo e tabelle, e dati ASIC attribuiti all'FPGA da una survey (RECO-HCON).
 
 ## 3. Metodologia
 
