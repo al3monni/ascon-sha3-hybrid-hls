@@ -19,6 +19,7 @@ Acceleratori hardware su FPGA per **Ascon-Hash256** (NIST SP 800-232), **SHA3-25
 - **Rate *r*:** bit di messaggio assorbiti per blocco: 64 per Ascon-Hash, 1088 per SHA3-256, 576 per SHA3-512.
 - **Cicli per blocco *c*:** cicli di clock tra l'assorbimento di due blocchi consecutivi, a regime.
 - **Throughput su messaggi lunghi (TP):** TP = r · f / c, con *f* frequenza di clock. È la definizione dei benchmark GMU.
+- **TP/LUT:** throughput diviso per i LUT, in kbps/LUT; sempre calcolato da noi. Confrontabile solo all'interno della stessa famiglia FPGA.
 - **Latenza:** cicli necessari per elaborare un intero messaggio di lunghezza data.
 - **Fmax:** massima frequenza di clock alla quale il design rispetta i vincoli di timing. Nelle nostre risintesi è il massimo di 1000 / (T − WNS) su una serie di periodi di clock T, dove WNS è lo slack peggiore del percorso critico.
 - **Post-route:** valori ottenuti dopo place and route, cioè i più affidabili.
@@ -32,16 +33,16 @@ Acceleratori hardware su FPGA per **Ascon-Hash256** (NIST SP 800-232), **SHA3-25
 
 **Tabella 1 — Valori pubblicati (solo punti del fronte di Pareto per famiglia FPGA)**
 
-| Lavoro | Arch. | FPGA | LUT | FF | Fmax (MHz) | c | TP (Mbps) | Note |
-|---|---|---|---|---|---|---|---|---|
-| RECO-ASCON [5] | – | Zynq-7020 | 1083 | 681 | 200 † | 25 | 512.0* | Hash + Hasha |
-| GMU finalisti, GMU2-x1 [2] | 1 r/c | Artix-7 | 1315 | 863 | 253 | 13* | 1247 | include AEAD |
-| GMU Round 2, GMU2-v1h [1] | 1 r/c | Artix-7 | 1375 | 862 | 276 | 13 | 1358.8 | include AEAD |
-| GMU finalisti, GMU2-x2 [2] | 2 r/c | Artix-7 | 2082 | 864 | 220 | 7* | 2009 | include AEAD |
-| GMU Round 2, GMU2-v2h [1] | 2 r/c | Artix-7 | 2126 | 861 | 234 | 7 | 2139.4 | include AEAD |
-| Khan et al. [3] | 1 r/c | Virtex-7 | 773 | n.d. | 272.03 | 12* | 1450.8* | solo hash † |
-| Khan et al. [3] | 2 r/c | Virtex-7 | 1290 | n.d. | 224.56 | 6* | 2395.3* | solo hash † |
-| Khan et al. [3] | 4 r/c | Virtex-7 | 2550 | n.d. | 162.68 | 3* | 3470.5* | solo hash † |
+| Lavoro | Arch. | FPGA | LUT | FF | Fmax (MHz) | c | TP (Mbps) | TP/LUT (kbps/LUT) | Note |
+|---|---|---|---|---|---|---|---|---|---|
+| RECO-ASCON [5] | – | Zynq-7020 | 1083 | 681 | 200 † | 25 | 512.0* | 472.8 | Hash + Hasha |
+| GMU finalisti, GMU2-x1 [2] | 1 r/c | Artix-7 | 1315 | 863 | 253 | 13* | 1247 | 948.3 | include AEAD |
+| GMU Round 2, GMU2-v1h [1] | 1 r/c | Artix-7 | 1375 | 862 | 276 | 13 | 1358.8 | 988.2 | include AEAD |
+| GMU finalisti, GMU2-x2 [2] | 2 r/c | Artix-7 | 2082 | 864 | 220 | 7* | 2009 | 964.9 | include AEAD |
+| GMU Round 2, GMU2-v2h [1] | 2 r/c | Artix-7 | 2126 | 861 | 234 | 7 | 2139.4 | 1006.3 | include AEAD |
+| Khan et al. [3] | 1 r/c | Virtex-7 | 773 | n.d. | 272.03 | 12* | 1450.8* | 1876.8 | solo hash † |
+| Khan et al. [3] | 2 r/c | Virtex-7 | 1290 | n.d. | 224.56 | 6* | 2395.3* | 1856.8 | solo hash † |
+| Khan et al. [3] | 4 r/c | Virtex-7 | 2550 | n.d. | 162.68 | 3* | 3470.5* | 1361.0 | solo hash † |
 
 - RECO-ASCON è su Zynq-7020, la cui logica programmabile è un Artix-7: per questo sta sul fronte Artix-7.
 - Le due edizioni GMU usano device Artix-7 diversi: xc7a12t-3 (Round 2) e xc7a100t-2 (finalisti). Per i finalisti *c* è ricavato da TP e Fmax dichiarati.
@@ -51,24 +52,22 @@ Acceleratori hardware su FPGA per **Ascon-Hash256** (NIST SP 800-232), **SHA3-25
 
 **Tabella 2 — Core di riferimento risintetizzati sulla xck26 (post-route, prestazione di picco)**
 
-| Core | Vincolo | LUT | FF | BRAM / DSP | Fmax (MHz) | c | TP @Fmax (Mbps) |
-|---|---|---|---|---|---|---|---|
-| ascon-verilog v4, solo hash | 1.4 ns | 1330 | 336 | 0 / 0 | 547.3 | 13 | 2694.4* |
-| GMU2 Ascon-128 x1 [8] | 1.8 ns | 1327 | 839 | 0 / 0 | 535.3 † | 13 | 2635.3* |
-| GMU2 Ascon-128 x2 [8] | ⏳ | ⏳ | ⏳ | ⏳ | ⏳ | ⏳ | ⏳ |
+| Core | Vincolo | LUT | FF | BRAM / DSP | Fmax (MHz) | c | TP @Fmax (Mbps) | TP/LUT (kbps/LUT) |
+|---|---|---|---|---|---|---|---|---|
+| ascon-verilog v4, solo hash | 1.4 ns | 1330 | 336 | 0 / 0 | 547.3 | 13 | 2694.4* | 2025.9 |
+| GMU2 Ascon-128 x1 [8] | 1.8 ns | 1327 | 839 | 0 / 0 | 535.3 † | 13 | 2635.3* | 1985.9 |
 
 - ascon-verilog: tra 2.0 e 1.4 ns l'Fmax stimata oscilla tra 518.9 e 547.3 MHz (variabilità del place and route). Percorso critico nella logica di controllo (FSM → contatore), non nella permutazione.
 - † GMU2 x1: ricerca fermata a 1.8 ns, con slack appena negativo (−0.068 ns). Valore vicino al limite, non verificato oltre.
 - *c* = 13: per ascon-verilog è ricavato dai cicli pubblicati dal progettista (118 per 32 B, 1730 per 1024 B); per GMU2 è dichiarato nel benchmark GMU Round 2.
 - GMU2 include l'AEAD e implementa Ascon-Hash v1.2 (stessa permutazione e stesso rate di Hash256).
-- GMU2 x2: il Verilog "x2" pubblicato in BlueLight è generato con `UNROLL_FACTOR=1`, identico a x1. Serve una rigenerazione con il compilatore Bluespec.
 
 **Tabella 3 — Nostro acceleratore (stato attuale; Vitis HLS 2025.1, xck26, 10 ns, post-route)**
 
-| Variante | LUT | FF | BRAM / DSP | Fmax (MHz) | Latenza co-simulazione (cicli) | c | TP (Mbps) |
-|---|---|---|---|---|---|---|---|
-| Ascon standalone (non è un riferimento) | 1200 | 744 | 4 / 0 | 211.8* | 183 (0 B) · 338 (23 B) | ⏳ | ⏳ |
-| **Ibrido** (area condivisa) | **3281** | **2215** | **10 / 0** | **162.1*** | ⏳ | ⏳ | ⏳ |
+| Variante | LUT | FF | BRAM / DSP | Fmax (MHz) | Latenza co-simulazione (cicli) | c | TP (Mbps) | TP/LUT (kbps/LUT) |
+|---|---|---|---|---|---|---|---|---|
+| Ascon standalone (non è un riferimento) | 1200 | 744 | 4 / 0 | 211.8* | 183 (0 B) · 338 (23 B) | ⏳ | ⏳ | ⏳ |
+| **Ibrido** (area condivisa) | **3281** | **2215** | **10 / 0** | **162.1*** | ⏳ | ⏳ | ⏳ | ⏳ |
 
 - Stessa ottimizzazione con sole pragma per le tre varianti, nessuna ottimizzazione logica. Input massimo 256 B.
 - Fmax* = 1000 / periodo post-route riportato da Vitis: 4.722 ns (Ascon), 6.169 ns (ibrido).
@@ -80,12 +79,12 @@ Acceleratori hardware su FPGA per **Ascon-Hash256** (NIST SP 800-232), **SHA3-25
 
 **Tabella 4 — Valori pubblicati (solo punti del fronte di Pareto per famiglia FPGA)**
 
-| Lavoro | Arch. | FPGA | LUT | FF | Fmax (MHz) | c | TP SHA3-256 (Mbps) | TP SHA3-512 (Mbps) | Note |
-|---|---|---|---|---|---|---|---|---|---|
-| Kerckhof et al. [9] | per lane, compatto | Virtex-6 | 519 | 429 | 250 | 2137 | 128 | 67.4* | † |
-| GMU SHA3-v1 [1] | ripiegato ×8 | Artix-7 | 1263 | 277 | 195 | 233 | 910.6 | – | senza padding |
-| Choudhary et al. [10] | 1 r/c | Artix-7 | 2970 | 1607 | 244.31 | 25* | 10632.4* | 5628.9* | solo permutazione † |
-| Choudhary et al. [10] | 1 r/c | Kintex-7 | 2970 | 1607 | 313.47 | 25* | 13642.2* | 7222.3* | solo permutazione † |
+| Lavoro | Arch. | FPGA | LUT | FF | Fmax (MHz) | c | TP SHA3-256 (Mbps) | TP SHA3-512 (Mbps) | TP/LUT SHA3-256 (kbps/LUT) | TP/LUT SHA3-512 (kbps/LUT) | Note |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| Kerckhof et al. [9] | per lane, compatto | Virtex-6 | 519 | 429 | 250 | 2137 | 128 | 67.4* | 246.6 | 129.9 | † |
+| GMU SHA3-v1 [1] | ripiegato ×8 | Artix-7 | 1263 | 277 | 195 | 233 | 910.6 | – | 721.0 | – | senza padding |
+| Choudhary et al. [10] | 1 r/c | Artix-7 | 2970 | 1607 | 244.31 | 25* | 10632.4* | 5628.9* | 3579.9 | 1895.3 | solo permutazione † |
+| Choudhary et al. [10] | 1 r/c | Kintex-7 | 2970 | 1607 | 313.47 | 25* | 13642.2* | 7222.3* | 4593.3 | 2431.8 | solo permutazione † |
 
 - Un solo punto per famiglia, tranne Artix-7, dove GMU SHA3-v1 e Choudhary sono i due estremi del compromesso area/TP.
 - † Kerckhof et al.: tool ISE 12.1; post-route non dichiarato; Fmax con l'opzione di sintesi "area".
@@ -94,10 +93,10 @@ Acceleratori hardware su FPGA per **Ascon-Hash256** (NIST SP 800-232), **SHA3-25
 
 **Tabella 5 — Core di riferimento risintetizzato sulla xck26 (Keccak team high-speed core v3.1, post-route, prestazione di picco)**
 
-| Core | Vincolo | LUT | FF | BRAM / DSP | Fmax (MHz) | c | TP @Fmax (Mbps) |
-|---|---|---|---|---|---|---|---|
-| SHA3-256 | 2.2 ns | 4444 | 2708 | 0 / 0 | 401.6 | 24 | 18205.9* |
-| SHA3-512 | 2.0 ns | 4162 | 2246 | 0 / 0 | 395.4 | 24 | 9489.6* |
+| Core | Vincolo | LUT | FF | BRAM / DSP | Fmax (MHz) | c | TP @Fmax (Mbps) | TP/LUT (kbps/LUT) |
+|---|---|---|---|---|---|---|---|---|
+| SHA3-256 | 2.2 ns | 4444 | 2708 | 0 / 0 | 401.6 | 24 | 18205.9* | 4096.7 |
+| SHA3-512 | 2.0 ns | 4162 | 2246 | 0 / 0 | 395.4 | 24 | 9489.6* | 2280.1 |
 
 - 1 round per ciclo, rate parametrico, padding a carico dell'host; *c* = 24 misurato in simulazione.
 - Il timing non chiude da 2.5 ns in giù: l'Fmax è il miglior valore stimato tra le passate. Percorso critico: un round della permutazione (4 livelli di logica).
@@ -105,10 +104,10 @@ Acceleratori hardware su FPGA per **Ascon-Hash256** (NIST SP 800-232), **SHA3-25
 
 **Tabella 6 — Nostro acceleratore (stesse condizioni della Tabella 3)**
 
-| Variante | LUT | FF | BRAM / DSP | Fmax (MHz) | Latenza co-simulazione (cicli) | c | TP (Mbps) |
-|---|---|---|---|---|---|---|---|
-| SHA-3 standalone (non è un riferimento) | 2214 | 1551 | 10 / 0 | 166.0* | 3449 (SHA3-256, 32 B) · 14250 (SHA3-512, 255 B) | ⏳ | ⏳ |
-| **Ibrido** (area condivisa) | **3281** | **2215** | **10 / 0** | **162.1*** | 14352 (SHA3-512, 255 B) | ⏳ | ⏳ |
+| Variante | LUT | FF | BRAM / DSP | Fmax (MHz) | Latenza co-simulazione (cicli) | c | TP (Mbps) | TP/LUT (kbps/LUT) |
+|---|---|---|---|---|---|---|---|---|
+| SHA-3 standalone (non è un riferimento) | 2214 | 1551 | 10 / 0 | 166.0* | 3449 (SHA3-256, 32 B) · 14250 (SHA3-512, 255 B) | ⏳ | ⏳ | ⏳ |
+| **Ibrido** (area condivisa) | **3281** | **2215** | **10 / 0** | **162.1*** | 14352 (SHA3-512, 255 B) | ⏳ | ⏳ | ⏳ |
 
 - Fmax* = 1000 / periodo post-route: 6.023 ns (SHA-3), 6.169 ns (ibrido). SHA-3 re-implementato il 23/10/2026.
 - Latenza nell'ordine delle migliaia di cicli per messaggio, contro i 24 cicli per blocco del riferimento: coerente con il collo di bottiglia della RAM di stato a 2 porte (backlog B-01).
@@ -118,12 +117,12 @@ Acceleratori hardware su FPGA per **Ascon-Hash256** (NIST SP 800-232), **SHA3-25
 
 **Tabella 7 — Implementazioni HLS pubblicate**
 
-| Lavoro | Alg. | FPGA | LUT | FF | Fmax (MHz) | c | TP (Mbps) | Note |
-|---|---|---|---|---|---|---|---|---|
-| Urbano-Molano & Velasco-Medina [15] | SHA3-512 | Virtex-7 | 6234 | 2597 | 162.31 | 49 | 1908 | † |
-| AMD Vitis Security Library [16] | SHA3-256 | n.d. † | 44975 | 36787 | 306.65 † | 1104 | 302.2* | vendor |
-| AMD Vitis Security Library [16] | SHA3-512 | n.d. † | 39794 | 32994 | 316.25 † | 1096 | 166.2* | vendor |
-| AMD Vitis Security Library, sulla xck26 | SHA3-256/512 | xck26 | ⏳ | ⏳ | ⏳ | ⏳ | ⏳ | risintesi prevista |
+| Lavoro | Alg. | FPGA | LUT | FF | Fmax (MHz) | c | TP (Mbps) | TP/LUT (kbps/LUT) | Note |
+|---|---|---|---|---|---|---|---|---|---|
+| Urbano-Molano & Velasco-Medina [15] | SHA3-512 | Virtex-7 | 6234 | 2597 | 162.31 | 49 | 1908 | 306.1 | † |
+| AMD Vitis Security Library [16] | SHA3-256 | n.d. † | 44975 | 36787 | 306.65 † | 1104 | 302.2* | 6.7 | vendor |
+| AMD Vitis Security Library [16] | SHA3-512 | n.d. † | 39794 | 32994 | 316.25 † | 1096 | 166.2* | 4.2 | vendor |
+| AMD Vitis Security Library, sulla xck26 | SHA3-256/512 | xck26 | ⏳ | ⏳ | ⏳ | ⏳ | ⏳ | ⏳ | risintesi prevista |
 
 - † Urbano-Molano & Velasco-Medina: Vivado HLS 2020.1; riduzioni di area incoerenti tra testo e Tab. III.
 - † AMD: device non dichiarato (progetto di test configurato per vck190, Versal); non dichiarato se il periodo sia stima di sintesi o post-route. Non collocabile su un fronte di Pareto: resta come riferimento HLS del vendor, in attesa della risintesi sulla xck26.
