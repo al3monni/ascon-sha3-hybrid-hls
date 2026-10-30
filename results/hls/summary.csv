@@ -1,0 +1,4 @@
+variant,T_hls_ns,csim,csyn_fmax_est_MHz,csyn_LUT,csyn_FF,csyn_BRAM,csyn_lat_max,cosim,cosim_lat_min,cosim_lat_avg,cosim_lat_max,cosim_ii_min,cosim_ii_avg,cosim_ii_max,syn_LUT,syn_FF,syn_BRAM,impl_LUT,impl_FF,impl_DSP,impl_BRAM,impl_CLB,cp_req_ns,cp_syn_ns,cp_impl_ns,wns_ns,timing,f_impl_MHz
+Ascon-Test,10,PASS,210.48,4945,1068,4,7081,Pass,160,238,317,318,318,318,1153,1020,4,1148,1020,0,4,225,10.000,3.173,4.735,5.265240,met,211.2
+Hybrid-Test,10,PASS,209.10,7671,2266,16,1116855,Pass,2287,5853,14352,3295,7042,14353,3302,2215,10,3281,2215,0,10,667,10.000,3.899,6.169,3.831357,met,162.1
+Sha-Test,10,PASS,209.10,4601,1601,16,988781,Pass,3449,8849,14250,3450,3450,3450,2223,1551,10,2214,1551,0,10,474,10.000,3.738,6.023,3.976934,met,166.0

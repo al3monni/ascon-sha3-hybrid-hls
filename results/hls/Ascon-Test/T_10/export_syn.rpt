@@ -1,0 +1,282 @@
+================================================================
+== Vivado RTL Synthesis Results
+================================================================
++ General Information:
+    * Date:            Fri Oct 30 11:27:26 +0100 2026
+    * Version:         2025.1 (Build 6214317 on Sep 11 2025)
+    * Project:         T_10
+    * Solution:        hls (Vivado IP Flow Target)
+    * Product family:  zynquplus
+    * Target device:   xck26-sfvc784-2LV-c
+
+
+================================================================
+== Run Constraints & Options
+================================================================
++ Design Constraints & Options:
+    * RTL Synthesis target clock:  10 ns
+    * C-Synthesis target clock:    10 ns
+    * C-Synthesis uncertainty:     27%
+
++ RTL Synthesis Options:
+    * config_export -vivado_synth_strategy:     default
+    * config_export -vivado_synth_design_args:  -directive sdx_optimization_effort_high
+
++ Reporting Options:
+    * config_export -vivado_report_level:      2
+    * config_export -vivado_max_timing_paths:  10
+
+
+================================================================
+== RTL Synthesis Resource Summary
+================================================================
+LUT:              1153
+FF:               1020
+DSP:              0
+BRAM:             4
+URAM:             0
+SRL:              0
+
+
+================================================================
+== RTL Synthesis Timing Summary
+================================================================
+* Timing was met
++----------------+-------------+
+| Timing         | Period (ns) |
++----------------+-------------+
+| Target         | 10.000      |
+| Post-Synthesis | 3.173       |
++----------------+-------------+
+
+
+================================================================
+== RTL Synthesis Resources
+================================================================
++--------------------------------------------+------+------+-----+------+------+-----+--------+------+---------+----------+--------+
+| Name                                       | LUT  | FF   | DSP | BRAM | URAM | SRL | Pragma | Impl | Latency | Variable | Source |
++--------------------------------------------+------+------+-----+------+------+-----+--------+------+---------+----------+--------+
+| inst                                       | 1153 | 1020 |     | 4    |      |     |        |      |         |          |        |
+|   (inst)                                   | 7    | 333  |     |      |      |     |        |      |         |          |        |
+|   H_i_U                                    | 240  |      |     | 4    |      |     |        |      |         |          |        |
+|   grp_hash_top_Pipeline_init_loop_fu_181   |      |      |     |      |      |     |        |      |         |          |        |
+|   grp_hash_top_Pipeline_squeezing_1_fu_192 |      |      |     |      |      |     |        |      |         |          |        |
+|   grp_hash_top_Pipeline_squeezing_2_fu_199 |      |      |     |      |      |     |        |      |         |          |        |
+|   grp_hash_top_Pipeline_squeezing_3_fu_206 |      |      |     |      |      |     |        |      |         |          |        |
+|   grp_hash_top_Pipeline_squeezing_4_fu_213 |      |      |     |      |      |     |        |      |         |          |        |
+|   grp_keccakf_asconp12_1_fu_187            | 737  | 656  |     |      |      |     |        |      |         |          |        |
+|     (grp_keccakf_asconp12_1_fu_187)        | 31   | 329  |     |      |      |     |        |      |         |          |        |
++--------------------------------------------+------+------+-----+------+------+-----+--------+------+---------+----------+--------+
+
+
+================================================================
+== RTL Synthesis Fail Fast
+================================================================
++-----------------------------------------------------------+-----------+--------+--------+
+| Criteria                                                  | Guideline | Actual | Status |
++-----------------------------------------------------------+-----------+--------+--------+
+| LUT                                                       | 70%       | 0.98%  | OK     |
+| FD                                                        | 50%       | 0.44%  | OK     |
+| LUTRAM+SRL                                                | 25%       | 0.00%  | OK     |
+| CARRY8                                                    | 25%       | 0.12%  | OK     |
+| MUXF7                                                     | 15%       | 0.09%  | OK     |
+| DSP                                                       | 80%       | 0.00%  | OK     |
+| RAMB/FIFO                                                 | 80%       | 1.39%  | OK     |
+| URAM                                                      | 80%       | 0.00%  | OK     |
+| DSP+RAMB+URAM (Avg)                                       | 70%       | 1.39%  | OK     |
+| BUFGCE* + BUFGCTRL                                        | 24        | 0      | OK     |
+| DONT_TOUCH (cells/nets)                                   | 0         | 0      | OK     |
+| MARK_DEBUG (nets)                                         | 0         | 0      | OK     |
+| Control Sets                                              | 2196      | 18     | OK     |
+| Average Fanout for modules > 100k cells                   | 4         | 3.36   | OK     |
+| Max Average Fanout for modules > 100k cells               | 4         | 0      | OK     |
+| Non-FD high fanout nets > 10k loads                       | 0         | 0      | OK     |
++-----------------------------------------------------------+-----------+--------+--------+
+| TIMING-6 (No common primary clock between related clocks) | 0         | 0      | OK     |
+| TIMING-7 (No common node between related clocks)          | 0         | 0      | OK     |
+| TIMING-8 (No common period between related clocks)        | 0         | 0      | OK     |
+| TIMING-14 (LUT on the clock tree)                         | 0         | 0      | OK     |
+| TIMING-35 (No common node in paths with the same clock)   | 0         | 0      | OK     |
++-----------------------------------------------------------+-----------+--------+--------+
+| Number of paths above max LUT budgeting (0.391ns)         | 0         | 0      | OK     |
+| Number of paths above max Net budgeting (0.263ns)         | 0         | 0      | OK     |
++-----------------------------------------------------------+-----------+--------+--------+
+
+
+================================================================
+== RTL Synthesis Timing Paths
+================================================================
+* Timing was met
++-------+-------+--------------------------------------+----------------------------------------+--------------+------------+----------------+----------------+--------------+
+| Path  | SLACK | STARTPOINT PIN                       | ENDPOINT PIN                           | LOGIC LEVELS | MAX FANOUT | DATAPATH DELAY | DATAPATH LOGIC | DATAPATH NET |
+|       |       |                                      |                                        |              |            |                |          DELAY |        DELAY |
++-------+-------+--------------------------------------+----------------------------------------+--------------+------------+----------------+----------------+--------------+
+| Path1 | 6.827 | H_i_U/genblk1[1].ram_reg_0/CLKBWRCLK | H_i_U/genblk1[1].ram_reg_1/DINADIN[0]  |            4 |          8 |          2.614 |          1.831 |        0.783 |
+| Path2 | 6.919 | H_i_U/genblk1[1].ram_reg_0/CLKBWRCLK | H_i_U/genblk1[1].ram_reg_0/DINADIN[0]  |            3 |          8 |          2.522 |          1.824 |        0.698 |
+| Path3 | 6.949 | H_i_U/genblk1[1].ram_reg_0/CLKBWRCLK | H_i_U/genblk1[1].ram_reg_0/DINADIN[1]  |            4 |          8 |          2.492 |          1.770 |        0.722 |
+| Path4 | 6.952 | H_i_U/genblk1[1].ram_reg_0/CLKBWRCLK | H_i_U/genblk1[1].ram_reg_0/DINADIN[22] |            4 |          8 |          2.518 |          1.753 |        0.765 |
+| Path5 | 6.970 | H_i_U/genblk1[1].ram_reg_0/CLKBWRCLK | H_i_U/genblk1[1].ram_reg_0/DINADIN[30] |            3 |          8 |          2.421 |          1.746 |        0.675 |
++-------+-------+--------------------------------------+----------------------------------------+--------------+------------+----------------+----------------+--------------+
+
+    +----------------------------------+------------------------+
+    | Path1 Cells                      | Primitive Type         |
+    +----------------------------------+------------------------+
+    | H_i_U/genblk1[1].ram_reg_0       | BLOCKRAM.BRAM.RAMB36E2 |
+    | H_i_U/genblk1[1].ram_reg_0_i_215 | CLB.LUT.LUT6           |
+    | H_i_U/genblk1[1].ram_reg_0_i_124 | CLB.MUXF.MUXF7         |
+    | H_i_U/genblk1[1].ram_reg_1_i_104 | CLB.LUT.LUT6           |
+    | H_i_U/genblk1[1].ram_reg_1_i_32  | CLB.MUXF.MUXF7         |
+    | H_i_U/genblk1[1].ram_reg_1       | BLOCKRAM.BRAM.RAMB36E2 |
+    | H_i_U/genblk1[1].ram_reg_0       | BLOCKRAM.BRAM.RAMB36E2 |
+    | H_i_U/genblk1[1].ram_reg_0_i_215 | CLB.LUT.LUT6           |
+    | H_i_U/genblk1[1].ram_reg_0_i_124 | CLB.MUXF.MUXF7         |
+    | H_i_U/genblk1[1].ram_reg_0_i_44  | CLB.LUT.LUT6           |
+    | H_i_U/genblk1[1].ram_reg_0       | BLOCKRAM.BRAM.RAMB36E2 |
+    | H_i_U/genblk1[1].ram_reg_0_i_214 | CLB.LUT.LUT6           |
+    | H_i_U/genblk1[1].ram_reg_0_i_122 | CLB.MUXF.MUXF7         |
+    | H_i_U/genblk1[1].ram_reg_0_i_155 | CLB.LUT.LUT6           |
+    | H_i_U/genblk1[1].ram_reg_0_i_43  | CLB.MUXF.MUXF7         |
+    | H_i_U/genblk1[1].ram_reg_0       | BLOCKRAM.BRAM.RAMB36E2 |
+    | H_i_U/genblk1[1].ram_reg_0_i_203 | CLB.LUT.LUT6           |
+    | H_i_U/genblk1[1].ram_reg_0_i_112 | CLB.MUXF.MUXF7         |
+    | H_i_U/genblk1[1].ram_reg_0_i_128 | CLB.LUT.LUT6           |
+    | H_i_U/genblk1[1].ram_reg_0_i_22  | CLB.MUXF.MUXF7         |
+    | H_i_U/genblk1[1].ram_reg_0       | BLOCKRAM.BRAM.RAMB36E2 |
+    | H_i_U/genblk1[1].ram_reg_0_i_203 | CLB.LUT.LUT6           |
+    | H_i_U/genblk1[1].ram_reg_0_i_112 | CLB.MUXF.MUXF7         |
+    | H_i_U/genblk1[1].ram_reg_0_i_14  | CLB.LUT.LUT6           |
+    +----------------------------------+------------------------+
+
+    +----------------------------------+------------------------+
+    | Path2 Cells                      | Primitive Type         |
+    +----------------------------------+------------------------+
+    | H_i_U/genblk1[1].ram_reg_0       | BLOCKRAM.BRAM.RAMB36E2 |
+    | H_i_U/genblk1[1].ram_reg_0_i_215 | CLB.LUT.LUT6           |
+    | H_i_U/genblk1[1].ram_reg_0_i_124 | CLB.MUXF.MUXF7         |
+    | H_i_U/genblk1[1].ram_reg_1_i_104 | CLB.LUT.LUT6           |
+    | H_i_U/genblk1[1].ram_reg_1_i_32  | CLB.MUXF.MUXF7         |
+    | H_i_U/genblk1[1].ram_reg_1       | BLOCKRAM.BRAM.RAMB36E2 |
+    | H_i_U/genblk1[1].ram_reg_0       | BLOCKRAM.BRAM.RAMB36E2 |
+    | H_i_U/genblk1[1].ram_reg_0_i_215 | CLB.LUT.LUT6           |
+    | H_i_U/genblk1[1].ram_reg_0_i_124 | CLB.MUXF.MUXF7         |
+    | H_i_U/genblk1[1].ram_reg_0_i_44  | CLB.LUT.LUT6           |
+    | H_i_U/genblk1[1].ram_reg_0       | BLOCKRAM.BRAM.RAMB36E2 |
+    | H_i_U/genblk1[1].ram_reg_0_i_214 | CLB.LUT.LUT6           |
+    | H_i_U/genblk1[1].ram_reg_0_i_122 | CLB.MUXF.MUXF7         |
+    | H_i_U/genblk1[1].ram_reg_0_i_155 | CLB.LUT.LUT6           |
+    | H_i_U/genblk1[1].ram_reg_0_i_43  | CLB.MUXF.MUXF7         |
+    | H_i_U/genblk1[1].ram_reg_0       | BLOCKRAM.BRAM.RAMB36E2 |
+    | H_i_U/genblk1[1].ram_reg_0_i_203 | CLB.LUT.LUT6           |
+    | H_i_U/genblk1[1].ram_reg_0_i_112 | CLB.MUXF.MUXF7         |
+    | H_i_U/genblk1[1].ram_reg_0_i_128 | CLB.LUT.LUT6           |
+    | H_i_U/genblk1[1].ram_reg_0_i_22  | CLB.MUXF.MUXF7         |
+    | H_i_U/genblk1[1].ram_reg_0       | BLOCKRAM.BRAM.RAMB36E2 |
+    | H_i_U/genblk1[1].ram_reg_0_i_203 | CLB.LUT.LUT6           |
+    | H_i_U/genblk1[1].ram_reg_0_i_112 | CLB.MUXF.MUXF7         |
+    | H_i_U/genblk1[1].ram_reg_0_i_14  | CLB.LUT.LUT6           |
+    +----------------------------------+------------------------+
+
+    +----------------------------------+------------------------+
+    | Path3 Cells                      | Primitive Type         |
+    +----------------------------------+------------------------+
+    | H_i_U/genblk1[1].ram_reg_0       | BLOCKRAM.BRAM.RAMB36E2 |
+    | H_i_U/genblk1[1].ram_reg_0_i_215 | CLB.LUT.LUT6           |
+    | H_i_U/genblk1[1].ram_reg_0_i_124 | CLB.MUXF.MUXF7         |
+    | H_i_U/genblk1[1].ram_reg_1_i_104 | CLB.LUT.LUT6           |
+    | H_i_U/genblk1[1].ram_reg_1_i_32  | CLB.MUXF.MUXF7         |
+    | H_i_U/genblk1[1].ram_reg_1       | BLOCKRAM.BRAM.RAMB36E2 |
+    | H_i_U/genblk1[1].ram_reg_0       | BLOCKRAM.BRAM.RAMB36E2 |
+    | H_i_U/genblk1[1].ram_reg_0_i_215 | CLB.LUT.LUT6           |
+    | H_i_U/genblk1[1].ram_reg_0_i_124 | CLB.MUXF.MUXF7         |
+    | H_i_U/genblk1[1].ram_reg_0_i_44  | CLB.LUT.LUT6           |
+    | H_i_U/genblk1[1].ram_reg_0       | BLOCKRAM.BRAM.RAMB36E2 |
+    | H_i_U/genblk1[1].ram_reg_0_i_214 | CLB.LUT.LUT6           |
+    | H_i_U/genblk1[1].ram_reg_0_i_122 | CLB.MUXF.MUXF7         |
+    | H_i_U/genblk1[1].ram_reg_0_i_155 | CLB.LUT.LUT6           |
+    | H_i_U/genblk1[1].ram_reg_0_i_43  | CLB.MUXF.MUXF7         |
+    | H_i_U/genblk1[1].ram_reg_0       | BLOCKRAM.BRAM.RAMB36E2 |
+    | H_i_U/genblk1[1].ram_reg_0_i_203 | CLB.LUT.LUT6           |
+    | H_i_U/genblk1[1].ram_reg_0_i_112 | CLB.MUXF.MUXF7         |
+    | H_i_U/genblk1[1].ram_reg_0_i_128 | CLB.LUT.LUT6           |
+    | H_i_U/genblk1[1].ram_reg_0_i_22  | CLB.MUXF.MUXF7         |
+    | H_i_U/genblk1[1].ram_reg_0       | BLOCKRAM.BRAM.RAMB36E2 |
+    | H_i_U/genblk1[1].ram_reg_0_i_203 | CLB.LUT.LUT6           |
+    | H_i_U/genblk1[1].ram_reg_0_i_112 | CLB.MUXF.MUXF7         |
+    | H_i_U/genblk1[1].ram_reg_0_i_14  | CLB.LUT.LUT6           |
+    +----------------------------------+------------------------+
+
+    +----------------------------------+------------------------+
+    | Path4 Cells                      | Primitive Type         |
+    +----------------------------------+------------------------+
+    | H_i_U/genblk1[1].ram_reg_0       | BLOCKRAM.BRAM.RAMB36E2 |
+    | H_i_U/genblk1[1].ram_reg_0_i_215 | CLB.LUT.LUT6           |
+    | H_i_U/genblk1[1].ram_reg_0_i_124 | CLB.MUXF.MUXF7         |
+    | H_i_U/genblk1[1].ram_reg_1_i_104 | CLB.LUT.LUT6           |
+    | H_i_U/genblk1[1].ram_reg_1_i_32  | CLB.MUXF.MUXF7         |
+    | H_i_U/genblk1[1].ram_reg_1       | BLOCKRAM.BRAM.RAMB36E2 |
+    | H_i_U/genblk1[1].ram_reg_0       | BLOCKRAM.BRAM.RAMB36E2 |
+    | H_i_U/genblk1[1].ram_reg_0_i_215 | CLB.LUT.LUT6           |
+    | H_i_U/genblk1[1].ram_reg_0_i_124 | CLB.MUXF.MUXF7         |
+    | H_i_U/genblk1[1].ram_reg_0_i_44  | CLB.LUT.LUT6           |
+    | H_i_U/genblk1[1].ram_reg_0       | BLOCKRAM.BRAM.RAMB36E2 |
+    | H_i_U/genblk1[1].ram_reg_0_i_214 | CLB.LUT.LUT6           |
+    | H_i_U/genblk1[1].ram_reg_0_i_122 | CLB.MUXF.MUXF7         |
+    | H_i_U/genblk1[1].ram_reg_0_i_155 | CLB.LUT.LUT6           |
+    | H_i_U/genblk1[1].ram_reg_0_i_43  | CLB.MUXF.MUXF7         |
+    | H_i_U/genblk1[1].ram_reg_0       | BLOCKRAM.BRAM.RAMB36E2 |
+    | H_i_U/genblk1[1].ram_reg_0_i_203 | CLB.LUT.LUT6           |
+    | H_i_U/genblk1[1].ram_reg_0_i_112 | CLB.MUXF.MUXF7         |
+    | H_i_U/genblk1[1].ram_reg_0_i_128 | CLB.LUT.LUT6           |
+    | H_i_U/genblk1[1].ram_reg_0_i_22  | CLB.MUXF.MUXF7         |
+    | H_i_U/genblk1[1].ram_reg_0       | BLOCKRAM.BRAM.RAMB36E2 |
+    | H_i_U/genblk1[1].ram_reg_0_i_203 | CLB.LUT.LUT6           |
+    | H_i_U/genblk1[1].ram_reg_0_i_112 | CLB.MUXF.MUXF7         |
+    | H_i_U/genblk1[1].ram_reg_0_i_14  | CLB.LUT.LUT6           |
+    +----------------------------------+------------------------+
+
+    +----------------------------------+------------------------+
+    | Path5 Cells                      | Primitive Type         |
+    +----------------------------------+------------------------+
+    | H_i_U/genblk1[1].ram_reg_0       | BLOCKRAM.BRAM.RAMB36E2 |
+    | H_i_U/genblk1[1].ram_reg_0_i_215 | CLB.LUT.LUT6           |
+    | H_i_U/genblk1[1].ram_reg_0_i_124 | CLB.MUXF.MUXF7         |
+    | H_i_U/genblk1[1].ram_reg_1_i_104 | CLB.LUT.LUT6           |
+    | H_i_U/genblk1[1].ram_reg_1_i_32  | CLB.MUXF.MUXF7         |
+    | H_i_U/genblk1[1].ram_reg_1       | BLOCKRAM.BRAM.RAMB36E2 |
+    | H_i_U/genblk1[1].ram_reg_0       | BLOCKRAM.BRAM.RAMB36E2 |
+    | H_i_U/genblk1[1].ram_reg_0_i_215 | CLB.LUT.LUT6           |
+    | H_i_U/genblk1[1].ram_reg_0_i_124 | CLB.MUXF.MUXF7         |
+    | H_i_U/genblk1[1].ram_reg_0_i_44  | CLB.LUT.LUT6           |
+    | H_i_U/genblk1[1].ram_reg_0       | BLOCKRAM.BRAM.RAMB36E2 |
+    | H_i_U/genblk1[1].ram_reg_0_i_214 | CLB.LUT.LUT6           |
+    | H_i_U/genblk1[1].ram_reg_0_i_122 | CLB.MUXF.MUXF7         |
+    | H_i_U/genblk1[1].ram_reg_0_i_155 | CLB.LUT.LUT6           |
+    | H_i_U/genblk1[1].ram_reg_0_i_43  | CLB.MUXF.MUXF7         |
+    | H_i_U/genblk1[1].ram_reg_0       | BLOCKRAM.BRAM.RAMB36E2 |
+    | H_i_U/genblk1[1].ram_reg_0_i_203 | CLB.LUT.LUT6           |
+    | H_i_U/genblk1[1].ram_reg_0_i_112 | CLB.MUXF.MUXF7         |
+    | H_i_U/genblk1[1].ram_reg_0_i_128 | CLB.LUT.LUT6           |
+    | H_i_U/genblk1[1].ram_reg_0_i_22  | CLB.MUXF.MUXF7         |
+    | H_i_U/genblk1[1].ram_reg_0       | BLOCKRAM.BRAM.RAMB36E2 |
+    | H_i_U/genblk1[1].ram_reg_0_i_203 | CLB.LUT.LUT6           |
+    | H_i_U/genblk1[1].ram_reg_0_i_112 | CLB.MUXF.MUXF7         |
+    | H_i_U/genblk1[1].ram_reg_0_i_14  | CLB.LUT.LUT6           |
+    +----------------------------------+------------------------+
+
+
+================================================================
+== RTL Synthesis Vivado Reports
+================================================================
++--------------------------+-----------------------------------------------------------------+
+| Report Type              | Report Location                                                 |
++--------------------------+-----------------------------------------------------------------+
+| design_analysis          | impl/verilog/report/hash_top_design_analysis_synth.rpt          |
+| failfast                 | impl/verilog/report/hash_top_failfast_synth.rpt                 |
+| power                    | impl/verilog/report/hash_top_power_synth.rpt                    |
+| timing                   | impl/verilog/report/hash_top_timing_synth.rpt                   |
+| timing_paths             | impl/verilog/report/hash_top_timing_paths_synth.rpt             |
+| utilization              | impl/verilog/report/hash_top_utilization_synth.rpt              |
+| utilization_hierarchical | impl/verilog/report/hash_top_utilization_hierarchical_synth.rpt |
++--------------------------+-----------------------------------------------------------------+
+
+
