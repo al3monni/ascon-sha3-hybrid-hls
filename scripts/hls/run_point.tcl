@@ -11,6 +11,7 @@
 #   T_HLS    HLS clock target [ns]                     (default: 10)
 #   STEPS    subset of "csim cosim impl"               (default: all; csynth always runs)
 #   DESIGN   design label (default: scripts/hls/design.txt, see common.tcl)
+#   AUTO_PARTITION  off | auto  (default: off, see below)
 #
 # Output   : build/hls/<DESIGN>/<VARIANT>/T_<T_HLS>/   (dots -> 'p', e.g. T_6p67)
 # =============================================================================
@@ -24,6 +25,12 @@ set UNCERTAINTY 27%                   ;# Vitis HLS default, made explicit for tr
 # [OPT] Same value for all variants, so that hybrid vs standalone is a like-for-like comparison
 set AUTO_REWIND true
 
+# [WAS] Vitis HLS default: config_array_partition -throughput_driven auto
+# [OPT] off: every partitioning of the state must be an explicit, annotated pragma.
+#       With auto, after B-01 HLS inferred cyclic factor=3 on the Hybrid state (LOG-013):
+#       bank = word % 3 -> sequential urem (35 cycles) + 4 DSP on every byte access.
+#       Baseline unaffected: no automatic partitioning (HLS 214-270) in any of its 12 logs.
+
 # --- env_or, ROOT, DESIGN ---
 source [file join [file dirname [file normalize [info script]]] common.tcl]
 
@@ -31,6 +38,8 @@ source [file join [file dirname [file normalize [info script]]] common.tcl]
 set VARIANT [env_or VARIANT Hybrid-Test]
 set T_HLS   [env_or T_HLS 10]
 set STEPS   [env_or STEPS "csim cosim impl"]
+set AUTO_PARTITION [env_or AUTO_PARTITION off]
+if {$AUTO_PARTITION ni {off auto}} { error "AUTO_PARTITION must be off or auto: $AUTO_PARTITION" }
 
 # --- Paths ---
 set SRC  [file join $ROOT $VARIANT]
@@ -41,10 +50,14 @@ set WORK [file join $ROOT build hls $DESIGN $VARIANT]
 file mkdir $WORK
 cd $WORK
 
-puts "=== run_point: \[$DESIGN\] $VARIANT @ $T_HLS ns -> [file join $WORK $TAG] ==="
+puts "=== run_point: \[$DESIGN\] $VARIANT @ $T_HLS ns (auto partition: $AUTO_PARTITION) -> [file join $WORK $TAG] ==="
 
 # --- Component setup (open_component replaces open_project + open_solution) ---
 open_component -reset $TAG -flow_target vivado           ;# cfg: flow_target=vivado
+
+# [OPT] -reset does not touch cosim/ (written by run_cosim.tcl): a stale cosim/kat.rpt of the
+#       previous synthesis would be archived by collect.tcl as the KAT report of this one
+file delete -force [file join $WORK $TAG cosim]
 set_top $TOP
 add_files     [file join $SRC hash.c]                     ;# cfg: syn.file=
 add_files     [file join $SRC hash.h]
@@ -53,6 +66,7 @@ set_part $PART
 create_clock -period $T_HLS -name default                 ;# cfg: clock=
 set_clock_uncertainty $UNCERTAINTY
 config_compile -enable_auto_rewind=$AUTO_REWIND
+config_array_partition -throughput_driven $AUTO_PARTITION  ;# cfg: syn.array_partition.throughput_driven=
 
 # --- Flow ---
 if {"csim"  in $STEPS} { csim_design -O -clean }          ;# cfg: sim.O=1, csim.clean=1

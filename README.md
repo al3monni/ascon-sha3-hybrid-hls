@@ -244,6 +244,8 @@ vitis-run --mode hls --tcl scripts\hls\collect.tcl
 
 Un singolo punto: `set VARIANT=Hybrid-Test`, `set T_HLS=6.67` (opzionale `set STEPS=csim cosim`), poi `vitis-run --mode hls --tcl scripts\hls\run_point.tcl`.
 
+Il partizionamento automatico di HLS è disattivato di default (`AUTO_PARTITION=off`, vedi LOG-013): ogni partizionamento dello stato è una pragma esplicita nel codice. Una variabile d'ambiente `DESIGN` diversa da `scripts/hls/design.txt` produce un `WARNING`: dopo l'uso va rimossa (`Remove-Item Env:DESIGN`).
+
 **Vitis HLS (IDE)** — solo per l'ispezione (schedule viewer, analisi): aprire la root della repo come workspace in Vitis Unified 2025.1. Gli output della GUI (`*-Test/*-Test/`) non sono versionati.
 
 ## Workflow Vitis ↔ Git

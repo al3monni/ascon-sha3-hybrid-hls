@@ -33,5 +33,12 @@ proc read_design {root} {
     error "No design label in $path"
 }
 
-set DESIGN [env_or DESIGN [read_design $ROOT]]
+set DESIGN_FILE [read_design $ROOT]
+set DESIGN [env_or DESIGN $DESIGN_FILE]
 if {![regexp {^[A-Za-z0-9_-]+$} $DESIGN]} { error "Invalid DESIGN label: '$DESIGN'" }
+
+# [OPT] a DESIGN left set in the shell silently redirects every output to another
+#       design (it happened once: a b01 run landed in build/hls/baseline/) -> say it loudly
+if {$DESIGN ne $DESIGN_FILE} {
+    puts "WARNING: DESIGN overridden by the environment: '$DESIGN' (scripts/hls/design.txt: '$DESIGN_FILE')"
+}

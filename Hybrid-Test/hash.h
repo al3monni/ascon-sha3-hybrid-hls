@@ -14,25 +14,24 @@
 
 // state context
 typedef struct {
-    union {					// state:
-        uint8_t b[200];		// 8-bit bytes
-        uint64_t q[25];		// 64-bit words
-    } st;
 
     /*
-		State st is not partitionable because the union of b[200] and q[25] 
-		means addressing the same memory area in two different way, (i.e two alias)
-		the  two representation are needed because in the hybrid implementation of ascon and sha
-		we need to access the state array in two different way.
+        [WAS] union { uint8_t b[200]; uint64_t q[25]; } st;
+              Two aliases of the same storage (byte view for absorb/pad/squeeze,
+              word view for the permutation). Because of the union HLS could not
+              split the context: the whole struct (state + counters) was mapped
+              into ONE memory (csynth storage report: H_i, 64-bit x 27 words), so
+              at most 2 state accesses per cycle and no ARRAY_PARTITION on the state.
 
-		Because of the union, HLS maps the state st into a dual-port RAM with at most 2 accesses/cycle.
-		this constitutes the main bottleneck of the whole design
-		and the reason why several loops cannot reach II=1
-		(any loop touching >2 state words per iteration is port-bound).
-		
-		Removing the union (keeping only q[25] and computing byte views with shifts/masks)
-		is the main logic change to unlock array partitioning on the state.
-	*/
+        [OPT] B-01: word-only state. Byte accesses are rebuilt with shift/mask by
+              st_get_byte() / st_xor_byte() in hash.c (little-endian lanes, as in
+              FIPS 202 and SP 800-232, so the mapping is the same for both
+              algorithms and independent of `mode`). The state is now an ordinary
+              array that HLS can disaggregate from the counters and partition.
+              B-01 adds no partitioning pragma: its effect is measured alone.
+    */
+
+    uint64_t st[25];                    // state: 25 x 64-bit words (Ascon uses st[0..4])
 
     int pt, rsiz, mdlen, mode;		// these don't overflow
 	

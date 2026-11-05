@@ -150,11 +150,24 @@ proc col_vivado {comp} {
     return $res
 }
 
+# hls_config.cfg without the cosim.argv line that run_cosim.tcl leaves behind
+# (cosim_design -argv is persisted in the component cfg: it is not a setting of the point)
+proc col_copy_cfg {src dst} {
+    set out {}
+    foreach line [split [col_read $src] "\n"] {
+        if {![regexp {^\s*cosim\.argv\s*=} $line]} { lappend out $line }
+    }
+    set fh [open [file join $dst hls_config.cfg] w]
+    puts -nonewline $fh [join $out "\n"]
+    close $fh
+}
+
 # Copy the key reports of one point into results/hls/<DESIGN>/<VARIANT>/<TAG>/
 proc col_archive {comp dst} {
     file mkdir $dst
+    set cfg [file join $comp hls_config.cfg]
+    if {[file exists $cfg]} { col_copy_cfg $cfg $dst }
     foreach src [list \
-        [file join $comp hls_config.cfg] \
         [file join $comp hls syn report csynth.rpt] \
         [file join $comp hls impl report verilog export_syn.rpt] \
         [file join $comp hls impl report verilog export_impl.rpt]] {
@@ -193,6 +206,31 @@ foreach vdir [lsort [glob -nocomplain -type d -directory $BUILD *]] {
 
 file mkdir $OUT
 set csv [file join $OUT summary.csv]
+
+# [WAS] summary.csv rebuilt only from the points present in build/: deleting a build
+#       (e.g. one overwritten by mistake) silently dropped its row from the archive
+# [OPT] rows of points archived in results/ whose build is gone are kept from the old
+#       summary.csv (same header only), then rows are sorted as before
+proc col_cmp {a b} {
+    set c [string compare [lindex $a 1] [lindex $b 1]]
+    if {$c != 0} { return $c }
+    return [expr {[lindex $a 2] < [lindex $b 2] ? 1 : ([lindex $a 2] > [lindex $b 2] ? -1 : 0)}]
+}
+set built {}
+foreach r $rows { lappend built "[lindex $r 1]|[lindex $r 2]" }
+set old_lines [split [string trim [col_read $csv]] "\n"]
+if {[llength $old_lines] > 1 && [string trim [lindex $old_lines 0]] eq [join $HEADER ,]} {
+    foreach line [lrange $old_lines 1 end] {
+        set f [split [string trim $line] ,]
+        set key "[lindex $f 1]|[lindex $f 2]"
+        if {[llength $f] == [llength $HEADER] && $key ni $built} {
+            lappend rows $f
+            puts "collect: kept archived row without build: $key"
+        }
+    }
+}
+set rows [lsort -command col_cmp $rows]
+
 set fh [open $csv w]
 puts $fh [join $HEADER ,]
 foreach r $rows { puts $fh [join $r ,] }
