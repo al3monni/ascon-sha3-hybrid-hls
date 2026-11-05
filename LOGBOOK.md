@@ -27,7 +27,7 @@ Storico delle modifiche al codice e alla configurazione, dalla base di partenza 
 | [LOG-010](#log-010--flusso-hls-da-tcl-e-sweep-del-clock) | 2026-10-30 / 11-05 | Flusso HLS da Tcl e sweep del clock (10 / 6.67 / 5 / 4 ns) | Hybrid, SHA-3, Ascon |
 | [LOG-011](#log-011--testbench-in-modalità-throughput) | 2026-11-05 | Testbench in modalità throughput (`-argv <algo>`) | Hybrid, SHA-3, Ascon |
 | [LOG-012](#log-012--ristrutturazione-repo-versioni-di-design-e-flusso-di-riferimento) | 2026-11-05 | Ristrutturazione repo: versioni di design e flusso di riferimento | — |
-| [LOG-013](#log-013--b-01-rimozione-della-union-sullo-stato) | 2026-11-05 | B-01: rimozione della `union` sullo stato (branch `b01-remove-union`) | Hybrid (SHA-3, Ascon: da fare) |
+| [LOG-013](#log-013--b-01-rimozione-della-union-sullo-stato) | 2026-11-05 | B-01: rimozione della `union` sullo stato (branch `b01-remove-union`) | Hybrid, SHA-3, Ascon |
 
 ---
 
@@ -407,7 +407,54 @@ Throughput dalla cosim in modalità throughput (LOG-011): cicli/blocco = `(L(len
 - HLS: csim PASS, cosim PASS (KAT e 3 run di throughput), timing chiuso.
 
 **Note**
-- I report della cosim di throughput della baseline Hybrid @ 10 ns (valori nella tabella sopra) sono andati persi con il build sovrascritto. Si rigenerano da `main` insieme a quelli della baseline SHA-3 e Ascon.
+- I report della cosim di throughput della baseline Hybrid @ 10 ns (valori nella tabella sopra) sono andati persi con il build sovrascritto. Si rigenerano da `main`.
+- `collect.tcl` ora conserva le righe archiviate il cui build non esiste più. **[WAS]** `summary.csv` veniva ricostruito solo da `build/`, quindi cancellare un build eliminava la sua riga.
+
+### SHA-3
+
+**Modifiche** (`Sha-Test/hash.h`, `hash.c`)
+- Stessa modifica dell'Hybrid, limitata all'indirizzamento di SHA-3: `uint64_t st[25]` e gli helper generici `st_get_byte()` / `st_xor_byte()`.
+- L'indice di word variabile serve davvero: l'absorb tocca le word 0–16 (rate 136 B) o 0–8 (72 B), l'output le word 0–7.
+- Accessi aggiornati: 4 a byte, 1 a word, 2 call-site. Nessuna pragma nuova.
+
+### Ascon
+
+**Modifiche** (`Ascon-Test/hash.h`, `hash.c`): versione specializzata, non quella generica dell'Hybrid.
+- **Stato a 5 word.** **[WAS]** union da 25 word, di cui 20 inutilizzate → **[OPT]** `uint64_t st[5]` (i 320 bit dello stato Ascon). Il prototipo diventa `keccakf_asconp12(uint64_t st[5])`.
+- **Indice di word costante.** La rate è 8 byte, cioè `st[0]`: absorb, padding e squeeze toccano solo `st[0]`. Gli helper `st0_get_byte()` / `st0_xor_byte()` selezionano solo la lane, senza indice di word.
+- **`init_loop`.** Passa da 25 a 5 iterazioni: è la prima voce di B-07, assorbita qui.
+- Accessi aggiornati: 6 a byte, IV, 5 call-site. Nessuna pragma nuova.
+- **Motivazione.** Le standalone sono il caso migliore per ciascun algoritmo. L'indirizzamento generico resta solo nell'Hybrid, dove lo impone SHA-3: fa parte del costo della crypto-agility.
+
+### Riepilogo B-01 (@ 10 ns; area e frequenza post-route Vivado OOC, cicli dalla cosim di throughput)
+
+| Variante | Design | LUT | FF | BRAM | f [MHz] | Algoritmo | cicli/blocco | TP [Mbps] | TP/kLUT |
+|---|---|---:|---:|---:|---:|---|---:|---:|---:|
+| Hybrid | baseline | 3281 | 2215 | 10 | 162.1 | SHA3-256 | 3922 | 44.97 | 13.71 |
+| | | | | | | SHA3-512 | 3602 | 25.92 | 7.90 |
+| | | | | | | Ascon | 486 | 21.35 | 6.51 |
+| Hybrid | b01 | 3183 | 2606 | 0 | 150.3 | SHA3-256 | 3650 | 44.80 | 14.08 |
+| | | | | | | SHA3-512 | 3458 | 25.04 | 7.87 |
+| | | | | | | Ascon | 470 | 20.47 | 6.43 |
+| SHA-3 | baseline | 2214 | 1551 | 10 | 166.0 | SHA3-256 | 3898 | 46.33 | 20.93 |
+| | | | | | | SHA3-512 | 3578 | 26.72 | 12.07 |
+| SHA-3 | b01 | 2101 | 1950 | 0 | 192.0 | SHA3-256 | 3626 | 57.61 | 27.42 |
+| | | | | | | SHA3-512 | 3434 | 32.21 | 15.33 |
+| Ascon | baseline | 1148 | 1020 | 4 | 211.2 | Ascon | 61 | 221.6 | 193.0 |
+| Ascon | b01 | 983 | 975 | 4 | 300.1 | Ascon | 45 | 426.8 | 434.2 |
+
+Cosim (cicli): SHA-3 `L(0)` / `L(136)` = 3289 / 7187 (baseline) → 3283 / 6909 (b01); `L(0)` / `L(216)` = 3321 / 14055 → 3315 / 13617. Ascon `L(0)` / `L(256)` = 160 / 2112 → 136 / 1576.
+
+**Osservazioni**
+- **LUT in calo in tutte le varianti:** −3% (Hybrid), −5% (SHA-3), −14% (Ascon).
+  - Nell'Hybrid e in SHA-3 le 10 BRAM dello stato spariscono (lo stato va in LUTRAM); i FF crescono (+18%, +26%).
+  - In Ascon restano 4 BRAM. La csynth stimava 0 BRAM per `H_st` (`ram_t2p` 64 bit × 5) e il report gerarchico non le attribuisce a un sotto-modulo: da verificare in Vivado.
+- **Il throughput dipende dalla variante:**
+  - Hybrid: invariato (cicli da −4% a −7%, ma f −7%);
+  - SHA-3: +24% (SHA3-256), grazie a meno cicli e f +16%;
+  - Ascon: +93%, con 26% di cicli in meno e f +42% (CP post-route da 4.735 a 3.332 ns).
+- **Il caso Hybrid.** È l'unico in cui la frequenza scende. L'ipotesi, da verificare sul percorso critico del timing report, è che la logica d'indirizzamento generica (indice di word variabile, condivisa dai due algoritmi) sia la causa: sarebbe un primo dato quantitativo sul costo dell'agilità.
+- **Cosa sblocca B-01.** Il partizionamento esplicito dello stato, che è il passo successivo, va misurato rispetto a `b01`.
 
 ---
 
@@ -417,12 +464,12 @@ Attività pianificate, in ordine di priorità. Quando un'attività parte, riceve
 
 | ID | Attività | Varianti | Riferimento | Stato |
 |---|---|---|---|---|
-| B-01 | **Rimuovere la `union` su `st`** (LOG-013: Hybrid fatto): stato solo `uint64_t q[25]` (Ascon: `q[5]`), viste a byte ricostruite con shift/mask. Sblocca `ARRAY_PARTITION` sullo stato e II=1 nei loop limitati dalle porte | tutte | `docs/optimizations/*` §1 | in corso |
+| B-01 | **Rimuovere la `union` su `st`** (LOG-013): stato solo `uint64_t q[25]` (Ascon: `q[5]`), viste a byte ricostruite con shift/mask. Sblocca `ARRAY_PARTITION` sullo stato e II=1 nei loop limitati dalle porte | tutte | `docs/optimizations/*` §1 | fatto (branch `b01-remove-union`) |
 | B-02 | Rompere la dipendenza seriale in `rho_pi()` | Hybrid, SHA-3 | `ottimizzazioni_logiche_{hybrid,sha3}.md` §2 | da fare |
 | B-03 | **Wrapper AXI4-Stream** (`hls::stream` + `ap_axiu`, TLAST sull'ultimo beat) per l'integrazione con AXI DMA. Da decidere: controllo via AXI-Lite oppure header in-band + `ap_ctrl_none` (32 bit, compatibile con il driver `uniss_dma` di [mdc-suite/AXI-based-driver-applications](https://github.com/mdc-suite/AXI-based-driver-applications)). Bozza AXI-Lite a 8 bit già verificata in C (KAT + TLAST) | Hybrid → poi tutte | `docs/optimizations/*` §3/§4 | in corso |
 | B-04 | Block design Vivado: Zynq MPSoC + AXI DMA + IP, bitstream/`.xsa`, applicazione di test sulla KV260 | Hybrid → poi tutte | — | da fare |
 | B-05 | Dataset di tesi: area stimata vs reale, II di sintesi vs II osservato in cosim, throughput/area per algoritmo | tutte | — | da fare |
 | B-06 | Pulizia: rimuovere `keccakf_rndc` non usato in `keccakf_asconp12()` (Hybrid) e le variabili inutilizzate (`i`, `j`) | Hybrid | LOG-001 | da fare |
-| B-07 | Ottimizzazioni Ascon minori: azzerare solo 5 word in `hash_init`, absorb a granularità di word | Ascon | `ottimizzazioni_logiche_ascon.md` §2–3 | da fare |
+| B-07 | Ottimizzazioni Ascon minori: ~~azzerare solo 5 word in `hash_init`~~ (fatto in B-01), absorb a granularità di word | Ascon | `ottimizzazioni_logiche_ascon.md` §2–3 | da fare |
 | B-08 | Rivalutare `PIPELINE II=1` su `rounds_loop`: in SHA-3 E5 ≈17× throughput/area a ≈2.8× LUT. Ha senso se la metrica è throughput/area e non area pura; da misurare dopo B-01 | SHA-3, Hybrid | LOG-006 | da fare |
 | — | Dopo ogni modifica logica che cambia l'IP: incrementare `ip.version` nel package | tutte | — | regola |
