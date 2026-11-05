@@ -150,11 +150,24 @@ proc col_vivado {comp} {
     return $res
 }
 
+# hls_config.cfg without the cosim.argv line that run_cosim.tcl leaves behind
+# (cosim_design -argv is persisted in the component cfg: it is not a setting of the point)
+proc col_copy_cfg {src dst} {
+    set out {}
+    foreach line [split [col_read $src] "\n"] {
+        if {![regexp {^\s*cosim\.argv\s*=} $line]} { lappend out $line }
+    }
+    set fh [open [file join $dst hls_config.cfg] w]
+    puts -nonewline $fh [join $out "\n"]
+    close $fh
+}
+
 # Copy the key reports of one point into results/hls/<DESIGN>/<VARIANT>/<TAG>/
 proc col_archive {comp dst} {
     file mkdir $dst
+    set cfg [file join $comp hls_config.cfg]
+    if {[file exists $cfg]} { col_copy_cfg $cfg $dst }
     foreach src [list \
-        [file join $comp hls_config.cfg] \
         [file join $comp hls syn report csynth.rpt] \
         [file join $comp hls impl report verilog export_syn.rpt] \
         [file join $comp hls impl report verilog export_impl.rpt]] {

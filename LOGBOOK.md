@@ -27,6 +27,7 @@ Storico delle modifiche al codice e alla configurazione, dalla base di partenza 
 | [LOG-010](#log-010--flusso-hls-da-tcl-e-sweep-del-clock) | 2026-10-30 / 11-05 | Flusso HLS da Tcl e sweep del clock (10 / 6.67 / 5 / 4 ns) | Hybrid, SHA-3, Ascon |
 | [LOG-011](#log-011--testbench-in-modalità-throughput) | 2026-11-05 | Testbench in modalità throughput (`-argv <algo>`) | Hybrid, SHA-3, Ascon |
 | [LOG-012](#log-012--ristrutturazione-repo-versioni-di-design-e-flusso-di-riferimento) | 2026-11-05 | Ristrutturazione repo: versioni di design e flusso di riferimento | — |
+| [LOG-013](#log-013--b-01-rimozione-della-union-sullo-stato) | 2026-11-05 | B-01: rimozione della `union` sullo stato (branch `b01-remove-union`) | Hybrid (SHA-3, Ascon: da fare) |
 
 ---
 
@@ -343,13 +344,80 @@ Storico delle modifiche al codice e alla configurazione, dalla base di partenza 
 
 ---
 
+## LOG-013 — B-01: rimozione della `union` sullo stato
+
+**Contesto.** La `union { uint8_t b[200]; uint64_t q[25]; } st` in `hash_ctx_t` impedisce a HLS di separare lo stato dal resto del contesto. Nella baseline tutta la struct (stato + contatori) è un'unica memoria `H_i` da 64 bit × 27, su cui non si può applicare `ARRAY_PARTITION` (backlog B-01). Il lavoro si sviluppa nel branch `b01-remove-union`, con `design.txt` = `b01`. Ordine: Hybrid, poi SHA-3 e Ascon.
+
+### Hybrid
+
+**Modifiche** (`Hybrid-Test/hash.h`, `hash.c`; commit `4abf98a`)
+- `hash.h`: **[WAS]** union → **[OPT]** `uint64_t st[25]`.
+- `hash.c`: due helper `INLINE`, `st_get_byte()` e `st_xor_byte()`, ricostruiscono la vista a byte con shift/mask. Il byte `idx` sta nella word `idx >> 3`, alla lane `idx & 7`, in little-endian come in FIPS 202 e SP 800-232. La mappatura quindi è la stessa per i due algoritmi e non dipende da `mode`.
+- Accessi aggiornati:
+  - 9 accessi a byte (absorb, padding, squeeze);
+  - 2 accessi a word;
+  - 6 call-site della permutazione.
+- **Nessuna pragma nuova.** La `ARRAY_PARTITION` sullo stato resta commentata, così B-01 si misura da solo.
+
+**Flusso** (`scripts/hls/`)
+- `run_point.tcl`: nuovo parametro `AUTO_PARTITION`, default `off`, che imposta `config_array_partition -throughput_driven` (vedi sotto).
+- `run_point.tcl` cancella anche la `cosim/` del punto dopo `open_component -reset`. **[WAS]** Il `kat.rpt` di una sintesi precedente sopravviveva al reset e veniva archiviato come KAT della nuova.
+- `common.tcl`: `WARNING` se la variabile d'ambiente `DESIGN` non coincide con `design.txt`. Una variabile rimasta impostata nella shell aveva mandato un run b01 in `build/hls/baseline/`.
+- `collect.tcl`: archivia `hls_config.cfg` senza la riga `cosim.argv=` lasciata da `run_cosim.tcl`.
+
+**Partizionamento automatico di HLS: disattivato.** Al primo run di b01 con le impostazioni di default del tool (`throughput_driven auto`), HLS ha dedotto da solo `array_partition type=cyclic factor=3` sullo stato (`HLS 214-270`, a causa della `PIPELINE` di `theta_C`). Con 3 banchi da 9 word, ogni accesso con indice calcolato a runtime richiede banco = word % 3 e indirizzo = word / 3:
+- negli helper a byte un `urem` sequenziale da 35 cicli più 4 DSP;
+- `urem` da 8 cicli nei loop della permutazione, con profondità di pipeline da 2 a 9–10.
+
+Risultato (run non archiviato; post-route e cosim @ 10 ns):
+
+| Hybrid @ 10 ns | LUT | FF | BRAM | DSP | f [MHz] | cicli/blocco SHA3-256 / SHA3-512 / Ascon |
+|---|---:|---:|---:|---:|---:|---|
+| b01 + partizionamento automatico | 5300 | 4497 | 0 | 4 | 139.2 | 10338 / 7970 / 826 |
+
+**Decisione:** `AUTO_PARTITION=off` come default del flusso. Ogni partizionamento dello stato sarà una pragma esplicita, annotata `[OPT]`. La baseline non cambia: in nessuno dei suoi 12 log c'è un messaggio `214-270`.
+
+**Risultati** (`results/hls/b01/`, @ 10 ns; area e frequenza post-route Vivado OOC, cicli dalla cosim)
+
+| Hybrid @ 10 ns | LUT | FF | BRAM | DSP | CP [ns] | f [MHz] | Cosim KAT min / avg / max |
+|---|---:|---:|---:|---:|---:|---:|---|
+| baseline | 3281 | 2215 | 10 | 0 | 6.169 | 162.1 | 2287 / 5853 / 14352 |
+| b01 | 3183 | 2606 | 0 | 0 | 6.653 | 150.3 | 2281 / 5690 / 13832 |
+
+Throughput dalla cosim in modalità throughput (LOG-011): cicli/blocco = `(L(len1) − L(len0)) / k`; TP = bit di rate × f post-route / cicli per blocco.
+
+| Hybrid @ 10 ns | Algoritmo | L(len0) | L(len1) | k | cicli/blocco | TP [Mbps] | TP/kLUT |
+|---|---|---:|---:|---:|---:|---:|---:|
+| baseline | SHA3-256 | 3319 | 7241 | 1 | 3922 | 44.97 | 13.71 |
+| baseline | SHA3-512 | 3351 | 14157 | 3 | 3602 | 25.92 | 7.90 |
+| baseline | Ascon | 2287 | 17839 | 32 | 486 | 21.35 | 6.51 |
+| b01 | SHA3-256 | 3309 | 6959 | 1 | 3650 | 44.80 | 14.08 |
+| b01 | SHA3-512 | 3341 | 13715 | 3 | 3458 | 25.04 | 7.87 |
+| b01 | Ascon | 2281 | 17321 | 32 | 470 | 20.47 | 6.43 |
+
+**Osservazioni**
+- **Area.** Le 10 BRAM della baseline scompaiono: in b01 Vivado mette lo stato in LUTRAM (stima csynth: `H_st` 64 bit × 25, `RAM_1WNR`). LUT −3%, FF +18%.
+  - Ipotesi da verificare: senza la union le scritture a byte diventano read-modify-write su word da 64 bit, quindi non servono più i byte-enable delle BRAM.
+- **Cicli.** Da −4% a −7% per blocco. Il percorso critico si allunga: f post-route da 162.1 a 150.3 MHz (−7%). Il throughput resta circa invariato (da −0.4% a −4%), il TP/kLUT è alla pari.
+- **Baseline.** HLS aveva già scelto `RAM_1WNR` (RAM replicata con più porte di lettura) per la memoria della union: `theta_C` e `rho_pi_loop` arrivano già a II=1. I commenti nel codice secondo cui II=1 "non è raggiungibile per la RAM a 2 porte" non descrivono il comportamento della 2025.1: il costo era nelle BRAM replicate. I commenti vanno corretti.
+- **Cosa sblocca B-01.** Lo stato ora è un array ordinario: è possibile la `ARRAY_PARTITION` esplicita (`complete` o `cyclic` con fattore potenza di 2/5) e la ristrutturazione dei loop. È il prossimo passo, misurabile rispetto a `b01`.
+
+**Verifica**
+- gcc: equivalenza (`tests/equivalence/run.sh`, 771 vettori contro hashlib/pyascon), KAT, modalità throughput, ASan/UBSan.
+- HLS: csim PASS, cosim PASS (KAT e 3 run di throughput), timing chiuso.
+
+**Note**
+- I report della cosim di throughput della baseline Hybrid @ 10 ns (valori nella tabella sopra) sono andati persi con il build sovrascritto. Si rigenerano da `main` insieme a quelli della baseline SHA-3 e Ascon.
+
+---
+
 ## Backlog
 
 Attività pianificate, in ordine di priorità. Quando un'attività parte, riceve un `LOG-NNN`.
 
 | ID | Attività | Varianti | Riferimento | Stato |
 |---|---|---|---|---|
-| B-01 | **Rimuovere la `union` su `st`**: stato solo `uint64_t q[25]` (Ascon: `q[5]`), viste a byte ricostruite con shift/mask. Sblocca `ARRAY_PARTITION` sullo stato e II=1 nei loop limitati dalle porte | tutte | `docs/optimizations/*` §1 | da fare |
+| B-01 | **Rimuovere la `union` su `st`** (LOG-013: Hybrid fatto): stato solo `uint64_t q[25]` (Ascon: `q[5]`), viste a byte ricostruite con shift/mask. Sblocca `ARRAY_PARTITION` sullo stato e II=1 nei loop limitati dalle porte | tutte | `docs/optimizations/*` §1 | in corso |
 | B-02 | Rompere la dipendenza seriale in `rho_pi()` | Hybrid, SHA-3 | `ottimizzazioni_logiche_{hybrid,sha3}.md` §2 | da fare |
 | B-03 | **Wrapper AXI4-Stream** (`hls::stream` + `ap_axiu`, TLAST sull'ultimo beat) per l'integrazione con AXI DMA. Da decidere: controllo via AXI-Lite oppure header in-band + `ap_ctrl_none` (32 bit, compatibile con il driver `uniss_dma` di [mdc-suite/AXI-based-driver-applications](https://github.com/mdc-suite/AXI-based-driver-applications)). Bozza AXI-Lite a 8 bit già verificata in C (KAT + TLAST) | Hybrid → poi tutte | `docs/optimizations/*` §3/§4 | in corso |
 | B-04 | Block design Vivado: Zynq MPSoC + AXI DMA + IP, bitstream/`.xsa`, applicazione di test sulla KV260 | Hybrid → poi tutte | — | da fare |
