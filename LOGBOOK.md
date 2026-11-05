@@ -24,6 +24,9 @@ Storico delle modifiche al codice e alla configurazione, dalla base di partenza 
 | [LOG-007](#log-007--benchmark-software-portabile-x86_64--aarch64-fonte-unica-pmu-footprint) | 2026-10-09 | Benchmark software portabile (x86_64 / aarch64): fonte unica, PMU, footprint | Hybrid, SHA-3, Ascon |
 | [LOG-008](#log-008--benchmark-misura-robusta-a-clocksource-lenta-e-smt) | 2026-10-09 | Benchmark: misura robusta a clocksource lenta e SMT | — |
 | [LOG-009](#log-009--benchmark-10000-iterazioni-e-isolamento-del-dispositivo-livello-1) | 2026-10-10 | Benchmark: 10 000 iterazioni e isolamento del dispositivo (livello 1) | — |
+| [LOG-010](#log-010--flusso-hls-da-tcl-e-sweep-del-clock) | 2026-10-30 / 11-05 | Flusso HLS da Tcl e sweep del clock (10 / 6.67 / 5 / 4 ns) | Hybrid, SHA-3, Ascon |
+| [LOG-011](#log-011--testbench-in-modalità-throughput) | 2026-11-05 | Testbench in modalità throughput (`-argv <algo>`) | Hybrid, SHA-3, Ascon |
+| [LOG-012](#log-012--ristrutturazione-repo-versioni-di-design-e-flusso-di-riferimento) | 2026-11-05 | Ristrutturazione repo: versioni di design e flusso di riferimento | — |
 
 ---
 
@@ -258,6 +261,85 @@ Storico delle modifiche al codice e alla configurazione, dalla base di partenza 
 - Non applicabile in WSL (scheduler di Windows): lì l'unica misura possibile è chiudere le app, ed è dichiarato come limite.
 
 **Verifica.** Sintassi e logica di selezione delle CPU verificate nel container ("0-1" → core 1, altri "0"). `isolate.sh on/off` richiede systemd come PID 1, quindi la prima esecuzione reale avviene sul portatile e sulla Kria.
+
+---
+
+## LOG-010 — Flusso HLS da Tcl e sweep del clock
+
+**Contesto.** Il flusso dalla GUI non è ripetibile né scriptabile. Per la metodologia clock/Fmax serve uno sweep del clock target HLS: stringendo il clock, l'area cresce. Si cerca prima il compromesso throughput/area in HLS, poi la Fmax in Vivado sull'RTL scelto.
+
+**Modifiche** (`scripts/hls/`, commit `987314a`, `6d7082c`, `986025e`)
+- `run_point.tcl`: una variante × un clock target, `csim → csynth → cosim → export_design -flow impl` (Vivado out-of-context). Impostazioni portate da `hls_config.cfg`: part, top, `sim.O`, `ip_catalog`. `clock_uncertainty=27%` è reso esplicito.
+- `enable_auto_rewind=true` per **tutte** le varianti. **[WAS]** In `Ascon-Test/hls_config.cfg` era `=0`. **[OPT]** Il confronto ibrido vs standalone deve essere fatto a parità di condizioni.
+- `run_all.bat` (tre varianti a un clock), `sweep_hls.bat` (griglia di clock, default 10 / 6.67 / 5 / 4 ns = 100 / 150 / 200 / 250 MHz), `collect.tcl` (archivio dei report e `summary.csv`). Il prefisso di ogni colonna indica la fonte: `csyn_` stima HLS, `syn_` Vivado post-synthesis, `impl_` post-route, `cosim_` cicli di co-simulazione.
+
+**Risultati post-route** (`results/hls/baseline/summary.csv`; Vivado OOC, timing chiuso in tutti i 12 punti)
+
+| Variante | T_HLS [ns] | LUT | FF | BRAM | CP post-route [ns] | f [MHz] | Cosim latency max (KAT) |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| Hybrid | 10 | 3281 | 2215 | 10 | 6.169 | 162.1 | 14352 |
+| Hybrid | 6.67 | 3279 | 2222 | 10 | 5.329 | 187.7 | 14448 |
+| Hybrid | 5 | 3142 | 2426 | 10 | 4.502 | 222.1 | 17009 |
+| Hybrid | 4 | 3044 | 2600 | 6 | 3.819 | 261.8 | 17459 |
+| SHA-3 | 10 | 2214 | 1551 | 10 | 6.023 | 166.0 | 14250 |
+| SHA-3 | 6.67 | 2219 | 1565 | 10 | 5.362 | 186.5 | 14346 |
+| SHA-3 | 5 | 2053 | 1829 | 10 | 4.165 | 240.1 | 16907 |
+| SHA-3 | 4 | 1675 | 2002 | 10 | 3.814 | 262.2 | 17358 |
+| Ascon | 10 | 1148 | 1020 | 4 | 4.735 | 211.2 | 317 |
+| Ascon | 6.67 | 1148 | 1020 | 4 | 4.168 | 239.9 | 317 |
+| Ascon | 5 | 1189 | 1086 | 4 | 4.072 | 245.6 | 341 |
+| Ascon | 4 | 1178 | 1165 | 4 | 3.529 | 283.4 | 359 |
+
+**Note**
+- La latenza di cosim aggrega i 4 vettori KAT e non è confrontabile tra varianti: il throughput per algoritmo è misurato con LOG-011.
+- Ascon @ 10 ns differisce da LOG-004 (1148 vs 1200 LUT, 1020 vs 744 FF) per `auto_rewind`. Da qui in avanti i valori di riferimento sono quelli del flusso Tcl.
+
+---
+
+## LOG-011 — Testbench in modalità throughput
+
+**Contesto.** Le latenze di cosim sui KAT mescolano algoritmi e lunghezze diverse. Il throughput per algoritmo richiede il costo in cicli di un blocco di rate.
+
+**Modifiche** (`*-Test/main.c`, `scripts/hls/run_cosim.tcl`, `cosim_all.bat`; commit `fb3c1ff`)
+- **Senza argomenti:** i 4 KAT come prima. **[WAS]** `return 0`: csim/cosim davano PASS anche con un digest sbagliato. **[OPT]** Exit diverso da zero in caso di mismatch.
+- **Con `-argv <algo>`** (`sha3-256`, `sha3-512`, `ascon`, più `sha3-256v` / `sha3-512v` per il controllo di linearità):
+  1. KAT eseguiti in C puro su `hash()`, senza transazioni RTL;
+  2. **esattamente due** transazioni RTL `L(len0)` e `L(len1)`, con `len1 − len0 = k · rate`.
+  
+  Dal report di cosim: `cicli/blocco = (lat_max − lat_min) / k`. Ogni digest RTL è confrontato con `hash()`.
+- `run_cosim.tcl` riapre un punto già sintetizzato senza `-reset` (csynth e impl restano) e lancia una cosim per algoritmo → `cosim/<algo>.rpt`. Il report KAT viene salvato come `cosim/kat.rpt`.
+
+**Verifica.** gcc: KAT OK e tutte le configurazioni di throughput OK; un algoritmo sconosciuto dà exit 1. **Cosim non ancora eseguita.**
+
+---
+
+## LOG-012 — Ristrutturazione repo: versioni di design e flusso di riferimento
+
+**Contesto.**
+- Esistevano due serie di report "ufficiali": quella della GUI (`*-Test/*-Test/reports/`, LOG-004) e quella del flusso Tcl (`results/hls/`), con configurazioni diverse.
+- I risultati non erano separati per versione del design: un branch di ottimizzazione avrebbe sovrascritto i risultati della baseline.
+
+**Modifiche**
+- **Versione di design.** Nuovo `scripts/hls/design.txt` (tracciato) con l'etichetta della versione (`baseline`, `b01`, …), letta da `scripts/hls/common.tcl`; la variabile d'ambiente `DESIGN` la sovrascrive. Gli output finiscono in:
+  - `build/hls/<design>/<variant>/T_<ns>/` (ignorato da git);
+  - `results/hls/<design>/<variant>/T_<ns>/` e `results/hls/<design>/summary.csv` (tracciati).
+  
+  L'etichetta si cambia nel primo commit di ogni branch: il branch non può sovrascrivere i risultati di un altro design.
+- `run_point.tcl`, `run_cosim.tcl`, `collect.tcl` usano `common.tcl` (`env_or`, `ROOT`, `DESIGN`).
+- `collect.tcl`:
+  - colonna `design` in `summary.csv`;
+  - archivia anche `cosim/<algo>.rpt`;
+  - per le colonne `cosim_*` usa `cosim/kat.rpt` quando esiste. **[WAS]** Dopo `run_cosim.tcl`, `hls/sim/report/` contiene l'ultimo run di throughput, quindi venivano letti i cicli sbagliati.
+- `results/hls/{Hybrid,Sha,Ascon}-Test/` e `summary.csv` → `results/hls/baseline/` (`git mv`).
+- **Output della GUI non più tracciati** (`*-Test/*-Test/`: report, summary, IP impacchettato). Restano nella storia git: i valori di LOG-004 sono recuperabili dal commit `fb3c1ff`. La GUI resta per l'ispezione (schedule viewer).
+- `Ascon-Test/hls_config.cfg`: `enable_auto_rewind=0` → `=1`, come nel flusso Tcl (LOG-010).
+
+**Regole di lavoro**
+- `main` contiene solo design verificati: cosim PASS e voce nel LOGBOOK.
+- Ogni voce del backlog si sviluppa in un branch dedicato (`b01-remove-union`, …), con `design.txt` aggiornato nel primo commit, e si integra in `main` con un merge.
+- Il flusso di riferimento è quello Tcl (`scripts/hls/`). I sorgenti restano unici in `*-Test/`.
+
+**Verifica.** `collect.tcl` testato con `tclsh` su un albero `build/` di prova (report KAT preservato, `cosim/*.rpt` archiviati, etichetta non valida rifiutata). `run_point.tcl` e `run_cosim.tcl` testati con comandi Vitis fittizi (path e banner). Il run reale di `collect.tcl` sui build spostati rigenera `results/hls/baseline/`.
 
 ---
 

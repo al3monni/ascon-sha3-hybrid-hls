@@ -1,8 +1,9 @@
 # =============================================================================
 # collect.tcl - Collect the results of the Tcl HLS flow
-#   Scans build/hls/<VARIANT>/T_<ns>/, copies the key reports into
-#   results/hls/<VARIANT>/T_<ns>/ (tracked by git) and rewrites
-#   results/hls/summary.csv (one row per variant x T_HLS).
+#   Scans build/hls/<DESIGN>/<VARIANT>/T_<ns>/, copies the key reports into
+#   results/hls/<DESIGN>/<VARIANT>/T_<ns>/ (tracked by git) and rewrites
+#   results/hls/<DESIGN>/summary.csv (one row per variant x T_HLS).
+#   DESIGN: scripts/hls/design.txt or environment variable (see common.tcl).
 #
 # Location : <repo>/scripts/hls/collect.tcl
 # Launch   : vitis-run --mode hls --tcl scripts\hls\collect.tcl   (from repo root)
@@ -14,12 +15,13 @@
 #   cosim_  C/RTL co-simulation (cycles, aggregated over the testbench vectors)
 # =============================================================================
 
-# run with: collect.tcl -> scripts/hls -> scripts -> repo root
-set ROOT  [file dirname [file dirname [file dirname [file normalize [info script]]]]]
-set BUILD [file join $ROOT build hls]
-set OUT   [file join $ROOT results hls]
+# --- env_or, ROOT, DESIGN ---
+source [file join [file dirname [file normalize [info script]]] common.tcl]
 
-set HEADER {variant T_hls_ns csim
+set BUILD [file join $ROOT build hls $DESIGN]
+set OUT   [file join $ROOT results hls $DESIGN]
+
+set HEADER {design variant T_hls_ns csim
             csyn_fmax_est_MHz csyn_LUT csyn_FF csyn_BRAM csyn_lat_max
             cosim cosim_lat_min cosim_lat_avg cosim_lat_max cosim_ii_min cosim_ii_avg cosim_ii_max
             syn_LUT syn_FF syn_BRAM
@@ -92,9 +94,17 @@ proc col_csynth {comp} {
     return [list $fmax NA NA NA NA]
 }
 
+# KAT cosim report: run_cosim.tcl overwrites hls/sim/report/ with the last
+# throughput run and saves the KAT report as cosim/kat.rpt -> prefer that one
+proc col_kat_rpt {comp} {
+    set kat [file join $comp cosim kat.rpt]
+    if {[file exists $kat]} { return $kat }
+    return [col_find [file join $comp hls sim report] *_cosim.rpt]
+}
+
 # cosim: Verilog row -> status lat_min lat_avg lat_max ii_min ii_avg ii_max
 proc col_cosim {comp} {
-    set txt [col_read [col_find [file join $comp hls sim report] *_cosim.rpt]]
+    set txt [col_read [col_kat_rpt $comp]]
     foreach line [split $txt "\n"] {
         set f {}
         foreach x [split $line "|"] { lappend f [string trim $x] }
@@ -140,16 +150,26 @@ proc col_vivado {comp} {
     return $res
 }
 
-# Copy the key reports of one point into results/hls/<VARIANT>/<TAG>/
+# Copy the key reports of one point into results/hls/<DESIGN>/<VARIANT>/<TAG>/
 proc col_archive {comp dst} {
     file mkdir $dst
     foreach src [list \
         [file join $comp hls_config.cfg] \
         [file join $comp hls syn report csynth.rpt] \
-        [col_find [file join $comp hls sim report] *_cosim.rpt] \
         [file join $comp hls impl report verilog export_syn.rpt] \
         [file join $comp hls impl report verilog export_impl.rpt]] {
         if {$src ne "" && [file exists $src]} { file copy -force $src $dst }
+    }
+    # KAT cosim report, always archived as hash_top_cosim.rpt
+    set kat [col_kat_rpt $comp]
+    if {$kat ne "" && [file exists $kat]} {
+        file copy -force $kat [file join $dst hash_top_cosim.rpt]
+    }
+    # Throughput cosim reports of run_cosim.tcl: cosim/<algo>.rpt
+    foreach rpt [glob -nocomplain -directory [file join $comp cosim] *.rpt] {
+        if {[file tail $rpt] eq "kat.rpt"} { continue }
+        file mkdir [file join $dst cosim]
+        file copy -force $rpt [file join $dst cosim]
     }
 }
 
@@ -166,7 +186,7 @@ foreach vdir [lsort [glob -nocomplain -type d -directory $BUILD *]] {
     foreach p [lsort -real -decreasing -index 0 $points] {
         lassign $p tns comp
         col_archive $comp [file join $OUT $variant [file tail $comp]]
-        lappend rows [concat $variant $tns [col_csim $comp] \
+        lappend rows [concat $DESIGN $variant $tns [col_csim $comp] \
                              [col_csynth $comp] [col_cosim $comp] [col_vivado $comp]]
     }
 }
@@ -191,5 +211,5 @@ foreach r $rows {
           $v(cosim_lat_min) $v(cosim_lat_avg) $v(cosim_lat_max)]
 }
 puts ""
-puts "=== collect: [llength $rows] point(s) -> $csv ==="
+puts "=== collect: \[$DESIGN\] [llength $rows] point(s) -> $csv ==="
 exit

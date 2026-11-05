@@ -1,6 +1,6 @@
 # =============================================================================
 # run_cosim.tcl - Throughput cosim on an already synthesized point
-#   Re-opens build/hls/<VARIANT>/T_<T_HLS>/ WITHOUT reset (csynth + impl kept)
+#   Re-opens build/hls/<DESIGN>/<VARIANT>/T_<T_HLS>/ WITHOUT reset (csynth + impl kept)
 #   and runs one cosim per algorithm in the testbench throughput mode
 #   (main.c: argv = algorithm). Each report is saved as <point>/cosim/<algo>.rpt;
 #   the KAT report of run_point.tcl is kept as <point>/cosim/kat.rpt.
@@ -14,12 +14,11 @@
 #   T_HLS    HLS clock target [ns] of an existing point (default: 10)
 #   ALGOS    algorithms to run (default per variant, see DEFAULT_ALGOS);
 #            add sha3-256v / sha3-512v for the linearity check
+#   DESIGN   design label (default: scripts/hls/design.txt, see common.tcl)
 # =============================================================================
 
-proc env_or {name default} {
-    if {[info exists ::env($name)] && $::env($name) ne ""} { return $::env($name) }
-    return $default
-}
+# --- env_or, ROOT, DESIGN ---
+source [file join [file dirname [file normalize [info script]]] common.tcl]
 
 # Same names as TP_CFG[] in the three main.c
 set DEFAULT_ALGOS [dict create \
@@ -33,9 +32,8 @@ if {![dict exists $DEFAULT_ALGOS $VARIANT]} { error "Unknown VARIANT: $VARIANT" 
 set ALGOS   [env_or ALGOS [dict get $DEFAULT_ALGOS $VARIANT]]
 
 # --- Paths (same layout as run_point.tcl) ---
-set ROOT [file dirname [file dirname [file dirname [file normalize [info script]]]]]
 set TAG  "T_[string map {. p} $T_HLS]"
-set WORK [file join $ROOT build hls $VARIANT]
+set WORK [file join $ROOT build hls $DESIGN $VARIANT]
 set COMP [file join $WORK $TAG]
 
 if {![file exists [file join $COMP hls syn report csynth.rpt]]} {
@@ -58,7 +56,7 @@ open_component $TAG
 
 set failed {}
 foreach algo $ALGOS {
-    puts "=== run_cosim: $VARIANT @ $T_HLS ns, algo=$algo ==="
+    puts "=== run_cosim: \[$DESIGN\] $VARIANT @ $T_HLS ns, algo=$algo ==="
     file delete -force [file join $OUT_DIR $algo.rpt]
     # Testbench returns nonzero on digest mismatch or unknown algo -> cosim error
     if {[catch {cosim_design -O -argv $algo} err]} {
@@ -71,8 +69,8 @@ foreach algo $ALGOS {
 }
 
 if {[llength $failed]} {
-    puts "=== run_cosim: done with FAILURES ($VARIANT @ $T_HLS ns): $failed ==="
+    puts "=== run_cosim: done with FAILURES (\[$DESIGN\] $VARIANT @ $T_HLS ns): $failed ==="
 } else {
-    puts "=== run_cosim: done ($VARIANT @ $T_HLS ns): $ALGOS ==="
+    puts "=== run_cosim: done (\[$DESIGN\] $VARIANT @ $T_HLS ns): $ALGOS ==="
 }
 exit

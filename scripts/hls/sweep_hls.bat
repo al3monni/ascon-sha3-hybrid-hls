@@ -1,7 +1,7 @@
 @echo off
 rem ============================================================================
 rem sweep_hls.bat - Phase 1 DSE: all variants over a grid of HLS clock targets,
-rem                then collect.tcl -> results\hls\summary.csv
+rem                then collect.tcl -> results\hls\<design>\summary.csv
 rem Location : <repo>\scripts\hls\sweep_hls.bat
 rem Usage    : scripts\hls\sweep_hls.bat [T1 T2 ...]   (ns; default: 10 6.67 5 4)
 rem Notes    : each point runs in a fresh vitis-run process (run_all.bat ->

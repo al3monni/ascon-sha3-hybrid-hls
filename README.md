@@ -2,7 +2,7 @@
 
 Implementazione **crypto-agile** su FPGA di algoritmi di hash crittografici — **SHA-3/Keccak** e **Ascon-Hash** — realizzata in **Vitis HLS** con target **AMD Kria KV260** (Zynq UltraScale+ `xck26`).
 
-> La root di questa repo **coincide con il workspace Vitis Unified (2025.1)** usato in locale: ogni cartella `*-Test/` è un componente HLS apribile direttamente dall'IDE. Lo storico delle modifiche al codice è tracciato in [`LOGBOOK.md`](LOGBOOK.md).
+> La root di questa repo **coincide con il workspace Vitis Unified (2025.1)** usato in locale: ogni cartella `*-Test/` è un componente HLS apribile direttamente dall'IDE. Il **flusso HLS di riferimento è quello Tcl** (`scripts/hls/`), con risultati in `results/hls/<design>/`. Lo storico delle modifiche al codice è tracciato in [`LOGBOOK.md`](LOGBOOK.md).
 
 Un **acceleratore ibrido** (un unico datapath che calcola entrambi gli algoritmi, selezionabili a runtime) è una scelta giustificata rispetto a due implementazioni *standalone*, misurando il costo dell'astrazione unificata su area, throughput e latenza?
 
@@ -59,15 +59,23 @@ ascon-sha3-hybrid-hls/            # = workspace Vitis Unified (Vitis-HLS_Compone
 ├── .gitignore  .gitattributes    # esclusi build/cache Vitis; testo normalizzato LF
 │
 ├── Hybrid-Test/                  # componente HLS — variante ibrida (SHA-3 + Ascon, `mode` a runtime)
-│   ├── hash.h  hash.c  main.c    #   sorgenti + testbench KAT
-│   ├── hls_config.cfg            #   configurazione HLS (part, top, flow, file)
+│   ├── hash.h  hash.c  main.c    #   sorgenti (unica copia, letta da GUI e Tcl) + testbench KAT/throughput
+│   ├── hls_config.cfg            #   configurazione HLS per la GUI (allineata al flusso Tcl)
 │   ├── vitis-comp.json           #   descrittore del componente per l'IDE
-│   └── Hybrid-Test/              #   work_dir: solo gli output utili sono versionati
-│       ├── reports/              #     hls_compile / hls_cosim / hls_impl_syn / hls_impl_pnr
-│       ├── *.hls*_summary        #     riepiloghi per step (csim, compile, cosim, package, impl)
-│       └── hash_top.zip          #     IP packaged (Vivado IP catalog)
+│   └── Hybrid-Test/              #   work_dir della GUI: non versionato (solo ispezione)
 ├── Sha-Test/                     # componente HLS — SHA-3 standalone (stessa struttura)
 ├── Ascon-Test/                   # componente HLS — Ascon-Hash standalone (stessa struttura)
+│
+├── scripts/hls/                  # flusso HLS di riferimento (Tcl + .bat per Windows)
+│   ├── design.txt                #   etichetta della versione di design (baseline, b01, …)
+│   ├── common.tcl                #   impostazioni condivise (ROOT, DESIGN)
+│   ├── run_point.tcl  run_all.bat  sweep_hls.bat   # csim → csynth → cosim → impl OOC, sweep del clock
+│   ├── run_cosim.tcl  cosim_all.bat                # cosim di throughput (un run per algoritmo)
+│   └── collect.tcl               #   archivia i report e scrive summary.csv
+├── results/hls/<design>/         # risultati versionati, uno per versione di design
+│   ├── summary.csv               #   una riga per variante × clock target
+│   └── <variante>/T_<ns>/        #   csynth, cosim (KAT + cosim/<algo>.rpt), export_syn/impl, cfg
+├── build/hls/<design>/           # build Tcl (non versionato, rigenerabile)
 │
 ├── benchmarks/
 │   └── software-latency/         # benchmark di latenza SW hybrid vs standalone (x86_64 e aarch64)
@@ -186,15 +194,15 @@ La correttezza è verificata con **Known Answer Test (KAT)** tramite gcc. Il tes
 
 ## Risultati HLS attuali
 
-Flusso completo eseguito in Vitis HLS 2025.1 su tutte e tre le varianti (C Simulation → Synthesis → C/RTL Co-simulation → Package → Implementation out-of-context), part `xck26-sfvc784-2LV-c`, clock target **10 ns (100 MHz)**. Valori post-route, dai report in `*/*/reports/`:
+Flusso Tcl (`scripts/hls/`) in Vitis HLS 2025.1 su tutte e tre le varianti (csim → csynth → cosim → implementation out-of-context), part `xck26-sfvc784-2LV-c`, design **`baseline`**, clock target **10 ns (100 MHz)**. Valori post-route da `results/hls/baseline/summary.csv` (sweep completo 10 / 6.67 / 5 / 4 ns in `LOGBOOK.md`, LOG-010):
 
 | Variante | LUT | FF | BRAM | DSP | Period post-route | Cosim latency min / avg / max (cicli) |
 |---|---:|---:|---:|---:|---:|---|
 | Hybrid | 3281 | 2215 | 10 | 0 | 6.169 ns | 2287 / 5853 / 14352 |
 | SHA-3 | 2214 | 1551 | 10 | 0 | 6.023 ns | 3449 / 8849 / 14250 |
-| Ascon | 1200 | 744 | 4 | 0 | 4.722 ns | 183 / 260 / 338 |
+| Ascon | 1148 | 1020 | 4 | 0 | 4.735 ns | 160 / 238 / 317 |
 
-Timing chiuso in tutte le varianti. Le latenze di cosim aggregano i vettori KAT del testbench (messaggi e algoritmi diversi), quindi non sono direttamente confrontabili tra varianti: il confronto *throughput-to-area* per algoritmo è in roadmap.
+Timing chiuso in tutte le varianti e in tutti i punti dello sweep. Le latenze di cosim aggregano i vettori KAT del testbench (messaggi e algoritmi diversi), quindi non sono direttamente confrontabili tra varianti: il confronto *throughput-to-area* per algoritmo è in roadmap.
 
 > ⚠️ In questa versione le `#pragma HLS INTERFACE` di `hash_top` sono commentate: l'IP esportato ha porte `ap_memory`/`ap_none` e **non è ancora integrabile** in un block design con lo Zynq PS. Il wrapper AXI è il prossimo step (vedi `LOGBOOK.md`).
 
@@ -220,24 +228,31 @@ make            # gcc -Wall -O3; `make clean` rimuove i binari
 
 Le varianti `*-Test/` compilano anche con gcc (`gcc -O2 hash.c main.c`): le pragma HLS vengono ignorate.
 
-**Vitis HLS (IDE)** — aprire la root della repo come workspace in Vitis Unified 2025.1, selezionare il componente e lanciare in sequenza *C Simulation*, *C Synthesis*, *C/RTL Co-simulation*, *Package*, *Implementation*. Tutta la configurazione è in `hls_config.cfg` del componente.
+**Vitis HLS — flusso di riferimento (Tcl)**, da Windows (cmd/PowerShell) nella root della repo; la versione di design è quella di `scripts/hls/design.txt`:
 
-**Vitis HLS (riga di comando)** — equivalente, dalla cartella del componente:
-
-```bash
-vitis-run --mode hls --csim  --config ./hls_config.cfg --work_dir <Componente>
-v++ -c    --mode hls         --config ./hls_config.cfg --work_dir <Componente>
-vitis-run --mode hls --cosim --config ./hls_config.cfg --work_dir <Componente>
-vitis-run --mode hls --package --config ./hls_config.cfg --work_dir <Componente>
-vitis-run --mode hls --impl  --config ./hls_config.cfg --work_dir <Componente>
+```bat
+scripts\hls\run_all.bat 10
+scripts\hls\sweep_hls.bat
+scripts\hls\cosim_all.bat 10
+vitis-run --mode hls --tcl scripts\hls\collect.tcl
 ```
+
+- `run_all.bat <ns>`: tre varianti a un clock target, csim → csynth → cosim (KAT) → impl OOC;
+- `sweep_hls.bat [ns …]`: griglia di clock (default 10 / 6.67 / 5 / 4 ns), poi `collect.tcl`;
+- `cosim_all.bat [ns …]`: cosim di throughput sui punti già sintetizzati, poi `collect.tcl`;
+- `collect.tcl`: solo archivio dei report e `summary.csv`.
+
+Un singolo punto: `set VARIANT=Hybrid-Test`, `set T_HLS=6.67` (opzionale `set STEPS=csim cosim`), poi `vitis-run --mode hls --tcl scripts\hls\run_point.tcl`.
+
+**Vitis HLS (IDE)** — solo per l'ispezione (schedule viewer, analisi): aprire la root della repo come workspace in Vitis Unified 2025.1. Gli output della GUI (`*-Test/*-Test/`) non sono versionati.
 
 ## Workflow Vitis ↔ Git
 
 - Il lavoro si svolge in Vitis su Windows (`C:\Users\monni\Desktop\Vitis-HLS_Components`); i commit si fanno da **WSL** sulla stessa cartella (`/mnt/c/Users/monni/Desktop/Vitis-HLS_Components`).
-- Sono versionati **sorgenti, `hls_config.cfg`, `vitis-comp.json`, report, summary e IP packaged**; build, cache, log e metadati dell'IDE sono esclusi dal `.gitignore`.
-- Ogni modifica al codice o alla configurazione corrisponde a una voce in `LOGBOOK.md` (motivazione, file toccati, risultati prima/dopo) e a un commit che la cita (es. `LOG-007: remove union from hash_ctx_t`).
-- Prima di committare nuovi risultati si rilancia il flusso HLS, così che report e sorgenti restino coerenti.
+- Sono versionati **sorgenti, `hls_config.cfg`, `vitis-comp.json`, script e risultati del flusso Tcl** (`results/hls/<design>/`); build, output della GUI, cache, log e metadati dell'IDE sono esclusi dal `.gitignore`.
+- **`main` contiene solo design verificati** (cosim PASS + voce nel LOGBOOK). Ogni voce del backlog si sviluppa in un **branch dedicato** (es. `b01-remove-union`), il cui primo commit aggiorna `scripts/hls/design.txt` (es. `b01`): i risultati del branch finiscono in `results/hls/b01/` e non sovrascrivono quelli della `baseline`. A lavoro verificato, merge in `main`.
+- Ogni modifica al codice o alla configurazione corrisponde a una voce in `LOGBOOK.md` (motivazione, file toccati, risultati prima/dopo) e a un commit che la cita (es. `LOG-013: remove union from hash_ctx_t`).
+- Prima di committare nuovi risultati si rilancia il flusso HLS e `collect.tcl`, così che report e sorgenti restino coerenti.
 
 ## Materiale bibliografico
 
@@ -258,6 +273,8 @@ La cartella `paper/` raccoglie la letteratura di riferimento, organizzata per te
 - [x] Benchmark software hybrid vs standalone (parità: SHA3-256 Δ ≈ −0.9%, Ascon ≈ −0.1%, SHA3-512 ≈ +3.8%) — `benchmarks/software-latency/`.
 - [x] Esplorazione delle pragma documentata (`docs/reports/`) e riportata nel codice come commenti `[EXPLORED]`.
 - [x] Repo allineata al workspace Vitis locale + `LOGBOOK.md`.
+- [x] Flusso HLS da Tcl, sweep del clock (10 / 6.67 / 5 / 4 ns) e risultati per versione di design (`results/hls/<design>/`).
+- [x] Testbench in modalità throughput (`-argv <algo>`, cicli per blocco da due transazioni RTL).
 - [x] Inquadramento teorico della crypto-agility (NIST CSWP 39) e raccolta bibliografica.
 
 **Roadmap (da `TODO.txt`)**

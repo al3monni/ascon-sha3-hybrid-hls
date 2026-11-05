@@ -1,0 +1,5 @@
+# Design version label used by the Tcl HLS flow (see common.tcl):
+#   build/hls/<label>/ and results/hls/<label>/
+# Change it in the first commit of every optimization branch (e.g. b01),
+# so that a branch never overwrites the results of another design.
+baseline
