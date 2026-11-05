@@ -14,34 +14,31 @@
 
 // state context
 typedef struct {
-    union {					// state:
-        uint8_t b[200];		// 8-bit bytes repr
-        uint64_t q[25];		// 64-bit words repr
-    } st;
 
-	/*
-		State st is not partitionable because the union of b[200] and q[25] 
-		means addressing the same memory area in two different way, (i.e two alias)
-		the  two representation are needed because in the hybrid implementation of ascon and sha
-		we need to access the state array in two different way.
+    /*
+        [WAS] union { uint8_t b[200]; uint64_t q[25]; } st;
+              Two aliases of the same storage, sized for Keccak: Ascon uses only
+              5 of the 25 words (20 words of dead storage). Because of the union
+              HLS could not split the context: the whole struct (state + counters)
+              was mapped into ONE memory (csynth storage report: H_i, 64-bit x 27
+              words), so no ARRAY_PARTITION on the state.
 
-		Because of the union, HLS maps the state st into a dual-port RAM with at most 2 accesses/cycle.
-		this constitutes the main bottleneck of the whole design
-		and the reason why several loops cannot reach II=1
-		(any loop touching >2 state words per iteration is port-bound).
-		
-		Removing the union (keeping only q[5]) is what would actually unlock II=1 everywhere for Ascon.
-		It is the main logic change to unlock array partitioning on the state.
-	
-		ASCON uses only 5 state words (320 bits) and the 20 unused words are dead storage.
-	*/
-	
+        [OPT] B-01: word-only state of exactly the 5 words Ascon uses (320 bits).
+              Unlike Hybrid/SHA-3, no generic byte addressing is needed: the rate
+              is 8 bytes = st[0], so every byte access (absorb, padding, squeeze)
+              is a lane select on st[0] (st0_get_byte() / st0_xor_byte() in hash.c)
+              with a constant word index. B-01 adds no partitioning pragma: its
+              effect is measured alone.
+    */
+
+    uint64_t st[5];                     // Ascon state: 5 x 64-bit words, rate = st[0]
+
     int pt, rsiz, mdlen;		// these don't overflow
 
 } hash_ctx_t;
 
 // Compression function.
-void keccakf_asconp12 (uint64_t st[25]);
+void keccakf_asconp12 (uint64_t st[5]);       // [WAS] uint64_t st[25]
 
 // OpenSSL - like interfece
 int hash_init	(hash_ctx_t *c, int mdlen);	// mdlen = hash output in bytes

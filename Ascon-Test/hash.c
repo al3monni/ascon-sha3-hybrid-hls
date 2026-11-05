@@ -5,6 +5,34 @@
 // mode == 0 --> Ascon
 // mode > 0  --> Sha
 
+// ----- Byte view of the rate word st[0] (B-01) -----
+
+// [OPT] B-01: these two helpers replace the byte alias c->st.b[] of the removed union.
+//       Ascon-Hash256 has an 8-byte rate = st[0]: every byte the sponge touches
+//       (absorb j < 8, padding pt < 8, squeeze i < 8) is lane idx of st[0],
+//       bits [8*idx+7 : 8*idx] (little-endian, as in NIST SP 800-232).
+//       The word index is the constant 0: no word select at all, only a byte-lane
+//       select (shift by a multiple of 8 = decoder + AND/OR, no barrel shifter).
+//       Hybrid/SHA-3 need the generic word >> 3 addressing instead (LOG-013).
+
+uint8_t st0_get_byte(const uint64_t st[5], int idx) {
+
+    // leaf helper: inlined so the lane select is merged into the calling loop
+
+    #pragma HLS INLINE
+
+    return (uint8_t)(st[0] >> (8 * (idx & 7)));
+}
+
+void st0_xor_byte(uint64_t st[5], int idx, uint8_t v) {
+
+    // leaf helper: inlined so the read-modify-write of st[0] is merged into the calling loop
+
+    #pragma HLS INLINE
+
+    st[0] ^= ((uint64_t) v) << (8 * (idx & 7));
+}
+
 void chi(uint64_t st[]) {
 
     // chi is a leaf function and inlining keeps exactly one copy inside that datapath with zero call overhead
@@ -101,7 +129,7 @@ void diffusion(uint64_t st[]) {
     // No reasonable pragma can be applied here
 }
 
-void keccakf_asconp12(uint64_t st[25]) {
+void keccakf_asconp12(uint64_t st[5]) {      // [WAS] uint64_t st[25]
     
     /*
 
@@ -110,8 +138,9 @@ void keccakf_asconp12(uint64_t st[25]) {
             - Ascon permutation,
         depending on the mode.
 
-        The state st is always treated as 25×64-bit words (like Keccak).
-        Ascon uses only 5 words; the rest are ignored when mode == 0.
+        [WAS] The state st is always treated as 25×64-bit words (like Keccak).
+              Ascon uses only 5 words; the rest are ignored when mode == 0.
+        [OPT] B-01: the state is exactly the 5 Ascon words (st[0..4]).
 
     */
 
@@ -206,21 +235,22 @@ int hash_init(hash_ctx_t *c, int mdlen) {
     int i;
     uint64_t ASCON_HASH_IV= 0x0000080100cc0002; // Ascon
 
-    // Ascon only uses st[0..4] and zeroing all 25 words is harmless but wasteful
+    // [WAS] for (i = 0; i < 25; i++): Ascon only uses st[0..4], zeroing all 25 words was wasteful
+    // [OPT] B-01: the state has 5 words (absorbs the first item of backlog B-07)
     
-    init_loop: for (i = 0; i < 25; i++) {
+    init_loop: for (i = 0; i < 5; i++) {
         
         #pragma HLS PIPELINE II=1
 		
 		// II=1 IS feasible here because each iteration does one st write
 		// with no loop-carried dependency and the 2-port RAM sustains it
 
-        c->st.q[i] = 0;
+        c->st[i] = 0;                       // [WAS] c->st.q[i] = 0;
     }
     
 	// Only Ascon initializes word 0 with the IV.
 	
-	c->st.q[0] = ASCON_HASH_IV;
+	c->st[0] = ASCON_HASH_IV;               // [WAS] c->st.q[0]
 
     // Ascon has a fixed 8-byte rate.
     
@@ -230,7 +260,7 @@ int hash_init(hash_ctx_t *c, int mdlen) {
 
 	//Immediately permute the initial state once (per spec).
 	
-	init_perm: keccakf_asconp12(c->st.q);
+	init_perm: keccakf_asconp12(c->st);     // [WAS] c->st.q
 
     return 1;
 }
@@ -265,13 +295,17 @@ int hash_update(hash_ctx_t *c, const void *data, size_t len) {
 
         // XORs message bytes into the state one by one (absorb phase).
         
-        c->st.b[j++] ^= ((const uint8_t *) data)[i];
+        // [WAS] c->st.b[j++] ^= ((const uint8_t *) data)[i];
+        // [OPT] B-01: byte XOR into lane j of st[0] (j < rsiz = 8)
+
+        st0_xor_byte(c->st, j, ((const uint8_t *) data)[i]);
+        j++;
         
         // When the block is full (rsiz), permute it.
         
         if (j >= c->rsiz){
             
-            absorb_perm: keccakf_asconp12(c->st.q);
+            absorb_perm: keccakf_asconp12(c->st);    // [WAS] c->st.q
             j = 0;
         }
     }
@@ -298,11 +332,11 @@ int hash_final(void *md, hash_ctx_t *c) {
     
     // --- Apply domain-separation padding for each algorithm ---
 
-    c->st.b[c->pt] ^= 0x01;
+    st0_xor_byte(c->st, c->pt, 0x01);       // [WAS] c->st.b[c->pt] ^= 0x01;
 
     // Final permutation after padding.
     
-    final_perm_0: keccakf_asconp12(c->st.q);
+    final_perm_0: keccakf_asconp12(c->st);  // [WAS] c->st.q
     
     // --- Output ---
 
@@ -317,10 +351,10 @@ int hash_final(void *md, hash_ctx_t *c) {
 
         #pragma HLS pipeline II=1
 
-        ((uint8_t *) md)[i] = c->st.b[i];
+        ((uint8_t *) md)[i] = st0_get_byte(c->st, i);       // [WAS] c->st.b[i]
     }
 
-	final_perm_1: keccakf_asconp12(c->st.q);
+	final_perm_1: keccakf_asconp12(c->st);  // [WAS] c->st.q
 	
 	squeezing_2: for (i = 0; i < 8; i++) {
 
@@ -328,10 +362,10 @@ int hash_final(void *md, hash_ctx_t *c) {
 
         #pragma HLS pipeline II=1
 
-        ((uint8_t *) md)[i+8] = c->st.b[i];
+        ((uint8_t *) md)[i+8] = st0_get_byte(c->st, i);  // [WAS] c->st.b[i]
     }
 
-	final_perm_2: keccakf_asconp12(c->st.q);
+	final_perm_2: keccakf_asconp12(c->st);  // [WAS] c->st.q
 	
 	squeezing_3: for (i = 0; i < 8; i++) {
 
@@ -339,10 +373,10 @@ int hash_final(void *md, hash_ctx_t *c) {
 
         #pragma HLS pipeline II=1
 
-        ((uint8_t *) md)[i+16] = c->st.b[i];
+        ((uint8_t *) md)[i+16] = st0_get_byte(c->st, i);  // [WAS] c->st.b[i]
     }
 
-	final_perm_3: keccakf_asconp12(c->st.q);
+	final_perm_3: keccakf_asconp12(c->st);  // [WAS] c->st.q
 	
 	squeezing_4: for (i = 0; i < 8; i++)  {
 
@@ -350,7 +384,7 @@ int hash_final(void *md, hash_ctx_t *c) {
 
         #pragma HLS pipeline II=1
 
-        ((uint8_t *) md)[i+24] = c->st.b[i];
+        ((uint8_t *) md)[i+24] = st0_get_byte(c->st, i);  // [WAS] c->st.b[i]
 
     }
     
@@ -370,10 +404,12 @@ void hash(const void *in, size_t inlen, void *md, int mdlen) {
     
     hash_ctx_t H;
 
-    // These partitioning must stay disable because the union on st represents a constraint for partitioning, see hash.h
-    
-    //#pragma HLS ARRAY_PARTITION variable=H.st.q dim=1 type=cyclic factor=5
-    //#pragma HLS ARRAY_PARTITION variable=H.st.b dim=1 type=cyclic factor=5
+    // [WAS] partitioning disabled because the union on st made the state non-partitionable
+    // [OPT] B-01: the state is now a plain uint64_t st[5] and CAN be partitioned;
+    //       left disabled on purpose so that B-01 (union removal) is measured alone.
+    //       Candidate for the next step: type=complete (5 x 64-bit registers).
+
+    //#pragma HLS ARRAY_PARTITION variable=H.st dim=1 type=complete
 
     init_call:  hash_init   (&H, mdlen);
     abs_call:   hash_update (&H, in, inlen);
