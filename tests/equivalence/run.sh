@@ -27,16 +27,26 @@ check() {
         *) echo "unknown variant: $v" >&2; return 2 ;;
     esac
 
+    # [WAS] a failed build left the previous binary in place and the check ran on it
+    #       (false OK, e.g. g++ missing); inside `check ... || rc=1` set -e does not apply
+    # [OPT] stale binary removed first, build status checked explicitly
+    rm -f "$OUT/$v" "$OUT/$v.txt"
+
     if [ -f "$ROOT/$v/hash.cpp" ]; then
         # C++ variant: everything compiled as C++ (Vitis HLS headers from VITIS_INC)
+        command -v g++ > /dev/null || { echo "$v: FAIL - g++ not found (sudo apt install g++)"; return 1; }
+        [ -f "$VITIS_INC/hls_stream.h" ] || { echo "$v: FAIL - hls_stream.h not found in VITIS_INC=$VITIS_INC"; return 1; }
         g++ -O2 -Wno-unknown-pragmas -D"$def" -I"$ROOT/$v" -I"$VITIS_INC" \
-            -o "$OUT/$v" "$ROOT/$v/hash.cpp" -x c++ "$HERE/kat_sweep.c"
+            -o "$OUT/$v" "$ROOT/$v/hash.cpp" -x c++ "$HERE/kat_sweep.c" \
+            || { echo "$v: FAIL - build error"; return 1; }
     else
         gcc -O2 -Wno-unknown-pragmas -D"$def" -I"$ROOT/$v" \
-            -o "$OUT/$v" "$ROOT/$v/hash.c" "$HERE/kat_sweep.c"
+            -o "$OUT/$v" "$ROOT/$v/hash.c" "$HERE/kat_sweep.c" \
+            || { echo "$v: FAIL - build error"; return 1; }
     fi
 
-    "$OUT/$v" > "$OUT/$v.txt"
+    # hls::stream prints an "INFO [HLS SIM]" line at exit: not part of the vectors
+    "$OUT/$v" | grep -v '^INFO \[HLS SIM\]' > "$OUT/$v.txt"
     grep -E "^($algos) " "$HERE/golden.txt" > "$OUT/$v.golden"
 
     if diff -q "$OUT/$v.golden" "$OUT/$v.txt" > /dev/null; then
