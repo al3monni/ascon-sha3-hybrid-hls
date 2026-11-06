@@ -43,7 +43,17 @@ if {$AUTO_PARTITION ni {off auto}} { error "AUTO_PARTITION must be off or auto: 
 
 # --- Paths ---
 set SRC  [file join $ROOT $VARIANT]
-if {![file exists [file join $SRC hash.c]]} { error "Sources not found in: $SRC" }
+# [WAS] hash.c / main.c hard-coded
+# [OPT] C++ (.cpp, AXI-Stream variants: hls::stream + ap_axiu, LOG-014) or C (.c) sources
+proc src_file {dir base} {
+    foreach ext {cpp c} {
+        set f [file join $dir $base.$ext]
+        if {[file exists $f]} { return $f }
+    }
+    error "Sources not found: $base.cpp / $base.c in $dir"
+}
+set SRC_HASH [src_file $SRC hash]
+set SRC_TB   [src_file $SRC main]
 
 set TAG  "T_[string map {. p} $T_HLS]"
 set WORK [file join $ROOT build hls $DESIGN $VARIANT]
@@ -59,9 +69,9 @@ open_component -reset $TAG -flow_target vivado           ;# cfg: flow_target=viv
 #       previous synthesis would be archived by collect.tcl as the KAT report of this one
 file delete -force [file join $WORK $TAG cosim]
 set_top $TOP
-add_files     [file join $SRC hash.c]                     ;# cfg: syn.file=
+add_files     $SRC_HASH                                   ;# cfg: syn.file=
 add_files     [file join $SRC hash.h]
-add_files -tb [file join $SRC main.c]                     ;# cfg: tb.file=
+add_files -tb $SRC_TB                                     ;# cfg: tb.file=
 set_part $PART
 create_clock -period $T_HLS -name default                 ;# cfg: clock=
 set_clock_uncertainty $UNCERTAINTY
