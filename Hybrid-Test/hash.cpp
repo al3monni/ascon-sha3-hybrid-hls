@@ -666,4 +666,4 @@ void hash_top(uint8_t in[256], int inlen, uint8_t md[64], int mdlen, uint8_t mod
     // see hls::stream with TLAST for a fully robust stream design
 
     hash(in, inlen, md, mdlen, mode);
-}
+}
