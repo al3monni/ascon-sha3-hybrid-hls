@@ -1,0 +1,2 @@
+design,variant,T_hls_ns,csim,csyn_fmax_est_MHz,csyn_LUT,csyn_FF,csyn_BRAM,csyn_lat_max,cosim,cosim_lat_min,cosim_lat_avg,cosim_lat_max,cosim_ii_min,cosim_ii_avg,cosim_ii_max,syn_LUT,syn_FF,syn_BRAM,impl_LUT,impl_FF,impl_DSP,impl_BRAM,impl_CLB,cp_req_ns,cp_syn_ns,cp_impl_ns,wns_ns,timing,f_impl_MHz
+b03,Hybrid-Test,10,PASS,209.10,6902,2851,16,158279,Pass,2275,4534,13109,2294,4758,13131,3807,3244,0,3665,3244,0,0,730,10.000,2.626,5.326,4.674491,met,187.8

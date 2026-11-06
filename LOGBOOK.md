@@ -28,6 +28,7 @@ Storico delle modifiche al codice e alla configurazione, dalla base di partenza 
 | [LOG-011](#log-011--testbench-in-modalità-throughput) | 2026-11-05 | Testbench in modalità throughput (`-argv <algo>`) | Hybrid, SHA-3, Ascon |
 | [LOG-012](#log-012--ristrutturazione-repo-versioni-di-design-e-flusso-di-riferimento) | 2026-11-05 | Ristrutturazione repo: versioni di design e flusso di riferimento | — |
 | [LOG-013](#log-013--b-01-rimozione-della-union-sullo-stato) | 2026-11-05 | B-01: rimozione della `union` sullo stato (branch `b01-remove-union`) | Hybrid, SHA-3, Ascon |
+| [LOG-014](#log-014--b-03-interfaccia-axi4-stream--axi4-lite) | 2026-11-06 | B-03: interfaccia AXI4-Stream + AXI4-Lite (branch `b03-axi-stream`) | Hybrid (SHA-3, Ascon: da fare) |
 
 ---
 
@@ -458,6 +459,79 @@ Cosim (cicli): SHA-3 `L(0)` / `L(136)` = 3289 / 7187 (baseline) → 3283 / 6909 
 
 ---
 
+## LOG-014 — B-03: interfaccia AXI4-Stream + AXI4-Lite
+
+**Contesto.** Il top `hash_top(uint8_t in[256], …, uint8_t md[64], …)` era un wrapper con porte `ap_memory` attorno alla funzione software `hash()`, aggiunto solo per rendere sintetizzabile il codice. Un IP con queste porte non si collega all'AXI DMA dello Zynq. Il riferimento per l'integrazione è il driver `/dev/uniss_dma` (mdc-suite, AXI-based-driver-applications): un canale MM2S per l'ingresso, un canale S2MM per l'uscita, e S2MM chiude il trasferimento su TLAST. Il lavoro si sviluppa nel branch `b03-axi-stream`, con `design.txt` = `b03`.
+
+**Decisioni**
+- **Dati.** AXI4-Stream a 64 bit (`hls::stream<ap_axiu<64,0,0,0>>`): un beat corrisponde a una word di stato. Le rate di 136, 72 e 8 byte sono tutte multiple di 8.
+- **Controllo.** AXI4-Lite (`s_axilite`) per `inlen`, `mdlen`, `mode` e `return`, con `ap_ctrl_hs`. L'alternativa `ap_ctrl_none` con header in-band è stata scartata per le restrizioni in cosim.
+- **Lunghezza.** `inlen` stabilisce quanti byte entrano nell'hash, TLAST stabilisce dove finisce lo stream. L'IP consuma sempre fino a TLAST e restituisce 1 se i due non coincidono:
+  - non c'è stallo con un DMA programmato male;
+  - nessun beat avanzato finisce nel messaggio successivo;
+  - il messaggio vuoto funziona con `inlen = 0`, senza trasferimento DMA.
+- **Codice.** C++ (`hash.cpp`, `main.cpp`), con un solo percorso: `hash()` e la API a puntatori sono eliminate.
+
+### Hybrid
+
+**Modifiche** (commit `145f076`: rinomina in `.cpp` e `design.txt`; normalizzazione dei fine riga di `hash.cpp`; codice nel commit LOG-014)
+- `hash_top(hls::stream<axis64_t> &in, &out, int inlen, int mdlen, uint8_t mode) -> int`. È il top dell'IP: crea il contesto e chiama `hash_init` (invariata) → `hash_absorb` → `hash_squeeze`.
+- **`hash_absorb`.** **[WAS]** `hash_update`, un byte per iterazione con `st_xor_byte()` → **[OPT]** un beat per iterazione, XOR nella word `w`; l'ultimo beat parziale è mascherato in base a `inlen`. La permutazione parte quando `w` raggiunge `rsiz/8`. Il drain fino a TLAST restituisce 1 in caso di mismatch.
+- **`hash_squeeze`.** **[WAS]** `hash_final` con loop a byte (`st_get_byte`) → **[OPT]** una word per beat, con TKEEP e TLAST sull'ultimo beat. SHA-3 emette `ceil(mdlen/8)` beat; Ascon 4 beat di `st[0]`, con le 3 chiamate alla permutazione invariate. Il padding è invariato.
+- Rimossi `hash()`, `hash_update`/`hash_final` (`void*`), le porte array e `st_get_byte`.
+- **Testbench (`main.cpp`).** Fa la parte del DMA e controlla TLAST, TKEEP, i beat avanzati e `ap_return`.
+  - Default: i 4 KAT. In csim si aggiungono i test di robustezza.
+  - `-argv robust`: TLAST in anticipo o in ritardo e lunghezza esatta, anche in cosim.
+  - Modalità throughput: digest attesi da `golden.txt`.
+- **`tests/equivalence/`.** `kat_sweep.c` pilota gli stream per l'Hybrid. **[WAS]** `run.sh` rieseguiva il binario precedente se la compilazione falliva (falso OK con `g++` mancante) → **[OPT]** il binario viene rimosso prima della compilazione e l'esito controllato.
+
+**Interfaccia sintetizzata** (csynth, `s_axi_control`, 32 bit)
+
+| Offset | Registro | Accesso | Note |
+|---|---|---|---|
+| `0x00` | `CTRL` | RW | bit 0 `AP_START`, 1 `AP_DONE`, 2 `AP_IDLE`, 3 `AP_READY`, 7 `AUTO_RESTART` |
+| `0x04` / `0x08` / `0x0C` | `GIER` / `IP_IER` / `IP_ISR` | RW | interrupt |
+| `0x10` | `ap_return` | R | 0 = OK, 1 = TLAST ≠ `inlen` |
+| `0x18` | `inlen` | W | byte del messaggio |
+| `0x20` | `mdlen` | W | byte del digest |
+| `0x28` | `mode` | W | 0 = Ascon, > 0 = SHA-3 |
+
+AXIS `in_r` / `out_r` (le porte `in`/`out` vengono rinominate da HLS): TDATA 64, TKEEP 8, TSTRB 8, TLAST, register mode `both`.
+
+**Risultati** (`results/hls/b03/`, @ 10 ns; area e frequenza post-route Vivado OOC, cicli dalla cosim)
+
+| Hybrid @ 10 ns | LUT | FF | BRAM | DSP | CP [ns] | f [MHz] | Cosim KAT min / avg / max |
+|---|---:|---:|---:|---:|---:|---:|---|
+| b01 | 3183 | 2606 | 0 | 0 | 6.653 | 150.3 | 2281 / 5690 / 13832 |
+| b03 | 3665 | 3244 | 0 | 0 | 5.326 | 187.8 | 2275 / 4534 / 13109 |
+
+| Hybrid @ 10 ns | Algoritmo | L(len0) | L(len1) | k | cicli/blocco | TP [Mbps] | TP/kLUT |
+|---|---|---:|---:|---:|---:|---:|---:|
+| b01 | SHA3-256 | 3309 | 6959 | 1 | 3650 | 44.80 | 14.08 |
+| b01 | SHA3-512 | 3341 | 13715 | 3 | 3458 | 25.04 | 7.87 |
+| b01 | Ascon | 2281 | 17321 | 32 | 470 | 20.47 | 6.43 |
+| b03 | SHA3-256 | 3283 | 6576 | 1 | 3293 | 62.05 | 16.93 |
+| b03 | SHA3-512 | 3287 | 13094 | 3 | 3269 | 33.09 | 9.03 |
+| b03 | Ascon | 2275 | 16643 | 32 | 449 | 26.77 | 7.30 |
+
+Cosim `robust`: Pass (3 transazioni: TLAST in anticipo, TLAST in ritardo, lunghezza esatta).
+
+**Osservazioni**
+- **Absorb.** Passa da circa 3 cicli per byte a circa 3 cicli per word: la differenza tra SHA3-256 (17 word) e SHA3-512 (9 word) è 24 cicli per 8 word. Il costo per blocco ora è quasi tutto nella permutazione: circa 3240 cicli per Keccak-f e circa 440 per Ascon-p12 sul datapath condiviso, con i loop ancora rolled.
+- **Area.** LUT +15% e FF +24% rispetto a b01. Comprendono gli adattatori AXI4-Lite (`s_axi_control`) e i register slice AXIS (`both` su due stream da 81 bit). Il dettaglio per modulo è da leggere nel report gerarchico di Vivado.
+- **Frequenza.** f post-route da 150.3 a 187.8 MHz (+25%). Ipotesi da verificare sul percorso critico: la rimozione dei percorsi a byte di absorb e squeeze.
+- **Throughput.** +39% (SHA3-256), +32% (SHA3-512), +31% (Ascon). TP/kLUT +20%, +15%, +14%.
+- **Confronto con le standalone.** Va fatto solo dopo aver applicato B-03 anche a SHA-3 e Ascon, a parità di interfaccia.
+
+**Verifica**
+- g++ con gli header di Vitis 2025.1.1: KAT, robust, 5 configurazioni di throughput, equivalenza su 771 vettori via stream, ASan/UBSan puliti. Controllo negativo: un TLAST sbagliato viene rilevato.
+- HLS: csim PASS (KAT + robust), cosim PASS (KAT, 3 run di throughput, robust), timing chiuso.
+
+**Note**
+- Il benchmark software (`benchmarks/software-latency`) non compila più per l'Hybrid (`hash.c`, `hash()`): va adattato a fine lavoro.
+
+---
+
 ## Backlog
 
 Attività pianificate, in ordine di priorità. Quando un'attività parte, riceve un `LOG-NNN`.
@@ -466,7 +540,7 @@ Attività pianificate, in ordine di priorità. Quando un'attività parte, riceve
 |---|---|---|---|---|
 | B-01 | **Rimuovere la `union` su `st`** (LOG-013): stato solo `uint64_t q[25]` (Ascon: `q[5]`), viste a byte ricostruite con shift/mask. Sblocca `ARRAY_PARTITION` sullo stato e II=1 nei loop limitati dalle porte | tutte | `docs/optimizations/*` §1 | fatto (branch `b01-remove-union`) |
 | B-02 | Rompere la dipendenza seriale in `rho_pi()` | Hybrid, SHA-3 | `ottimizzazioni_logiche_{hybrid,sha3}.md` §2 | da fare |
-| B-03 | **Wrapper AXI4-Stream** (`hls::stream` + `ap_axiu`, TLAST sull'ultimo beat) per l'integrazione con AXI DMA. Da decidere: controllo via AXI-Lite oppure header in-band + `ap_ctrl_none` (32 bit, compatibile con il driver `uniss_dma` di [mdc-suite/AXI-based-driver-applications](https://github.com/mdc-suite/AXI-based-driver-applications)). Bozza AXI-Lite a 8 bit già verificata in C (KAT + TLAST) | Hybrid → poi tutte | `docs/optimizations/*` §3/§4 | in corso |
+| B-03 | **Wrapper AXI4-Stream** (LOG-014: Hybrid fatto; scelto AXI4-Lite + `inlen`/TLAST) (`hls::stream` + `ap_axiu`, TLAST sull'ultimo beat) per l'integrazione con AXI DMA. Da decidere: controllo via AXI-Lite oppure header in-band + `ap_ctrl_none` (32 bit, compatibile con il driver `uniss_dma` di [mdc-suite/AXI-based-driver-applications](https://github.com/mdc-suite/AXI-based-driver-applications)). Bozza AXI-Lite a 8 bit già verificata in C (KAT + TLAST) | Hybrid → poi tutte | `docs/optimizations/*` §3/§4 | in corso |
 | B-04 | Block design Vivado: Zynq MPSoC + AXI DMA + IP, bitstream/`.xsa`, applicazione di test sulla KV260 | Hybrid → poi tutte | — | da fare |
 | B-05 | Dataset di tesi: area stimata vs reale, II di sintesi vs II osservato in cosim, throughput/area per algoritmo | tutte | — | da fare |
 | B-06 | Pulizia: rimuovere `keccakf_rndc` non usato in `keccakf_asconp12()` (Hybrid) e le variabili inutilizzate (`i`, `j`) | Hybrid | LOG-001 | da fare |
