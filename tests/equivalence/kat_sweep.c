@@ -15,7 +15,7 @@
  *
  * Build: -DVARIANT_HYBRID | -DVARIANT_SHA | -DVARIANT_ASCON  (see run.sh)
  *
- * [OPT] B-03: the Hybrid top has AXI4-Stream ports (C++, hls::stream): the message is
+ * [OPT] B-03: the Hybrid and SHA-3 tops have AXI4-Stream ports (C++, hls::stream): the message is
  *       packed into 64-bit beats as the AXI DMA does (LE, TKEEP/TLAST on the last beat),
  *       the digest is unpacked from the output beats; ap_return and leftover beats are
  *       checked. This file is then compiled as C++ (run.sh: g++ -x c++).
@@ -45,9 +45,9 @@ static const algo_t ALGOS[] = { {"ascon", 32, 0} };
 
 #define NALGOS ((int)(sizeof(ALGOS) / sizeof(ALGOS[0])))
 
-#if defined(VARIANT_HYBRID)
+#if defined(VARIANT_HYBRID) || defined(VARIANT_SHA)
 /* one transaction of the stream IP; returns nonzero on ap_return != 0 or protocol error */
-static int hybrid_hash(const uint8_t *msg, int len, uint8_t *md, int mdlen, uint8_t mode) {
+static int stream_hash(const uint8_t *msg, int len, uint8_t *md, int mdlen, uint8_t mode) {
 
     hls::stream<axis64_t> in, out;
     int k, n, nb, ret, errs = 0, nbeats = (len + 7) >> 3, nout = (mdlen + 7) >> 3;
@@ -64,7 +64,12 @@ static int hybrid_hash(const uint8_t *msg, int len, uint8_t *md, int mdlen, uint
         in.write(beat);
     }
 
+#if defined(VARIANT_HYBRID)
     ret = hash_top(in, out, len, mdlen, mode);
+#else
+    (void) mode;                         /* standalone SHA-3: no mode register */
+    ret = hash_top(in, out, len, mdlen);
+#endif
 
     for (k = 0; k < nout; k++) {
         if (out.empty()) return 1;
@@ -90,8 +95,8 @@ int main(void) {
     for (a = 0; a < NALGOS; a++) {
         for (len = 0; len <= MAX_LEN; len++) {
 
-#if defined(VARIANT_HYBRID)
-            if (hybrid_hash(msg, len, md, ALGOS[a].mdlen, ALGOS[a].mode) != 0)
+#if defined(VARIANT_HYBRID) || defined(VARIANT_SHA)
+            if (stream_hash(msg, len, md, ALGOS[a].mdlen, ALGOS[a].mode) != 0)
                 printf("PROTOCOL-ERROR ");   /* makes the line differ from golden.txt */
 #else
             hash_top(msg, len, md, ALGOS[a].mdlen);
