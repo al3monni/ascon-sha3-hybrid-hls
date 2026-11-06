@@ -15,7 +15,7 @@
  *
  * Build: -DVARIANT_HYBRID | -DVARIANT_SHA | -DVARIANT_ASCON  (see run.sh)
  *
- * [OPT] B-03: the Hybrid and SHA-3 tops have AXI4-Stream ports (C++, hls::stream): the message is
+ * [OPT] B-03: all three tops have AXI4-Stream ports (C++, hls::stream): the message is
  *       packed into 64-bit beats as the AXI DMA does (LE, TKEEP/TLAST on the last beat),
  *       the digest is unpacked from the output beats; ap_return and leftover beats are
  *       checked. This file is then compiled as C++ (run.sh: g++ -x c++).
@@ -45,7 +45,6 @@ static const algo_t ALGOS[] = { {"ascon", 32, 0} };
 
 #define NALGOS ((int)(sizeof(ALGOS) / sizeof(ALGOS[0])))
 
-#if defined(VARIANT_HYBRID) || defined(VARIANT_SHA)
 /* one transaction of the stream IP; returns nonzero on ap_return != 0 or protocol error */
 static int stream_hash(const uint8_t *msg, int len, uint8_t *md, int mdlen, uint8_t mode) {
 
@@ -66,9 +65,12 @@ static int stream_hash(const uint8_t *msg, int len, uint8_t *md, int mdlen, uint
 
 #if defined(VARIANT_HYBRID)
     ret = hash_top(in, out, len, mdlen, mode);
-#else
+#elif defined(VARIANT_SHA)
     (void) mode;                         /* standalone SHA-3: no mode register */
     ret = hash_top(in, out, len, mdlen);
+#else
+    (void) mode;                         /* standalone Ascon: no mode / mdlen registers */
+    ret = hash_top(in, out, len);
 #endif
 
     for (k = 0; k < nout; k++) {
@@ -82,7 +84,6 @@ static int stream_hash(const uint8_t *msg, int len, uint8_t *md, int mdlen, uint
 
     return ret != 0 || errs != 0 || !in.empty() || !out.empty();
 }
-#endif
 
 int main(void) {
 
@@ -95,12 +96,8 @@ int main(void) {
     for (a = 0; a < NALGOS; a++) {
         for (len = 0; len <= MAX_LEN; len++) {
 
-#if defined(VARIANT_HYBRID) || defined(VARIANT_SHA)
             if (stream_hash(msg, len, md, ALGOS[a].mdlen, ALGOS[a].mode) != 0)
                 printf("PROTOCOL-ERROR ");   /* makes the line differ from golden.txt */
-#else
-            hash_top(msg, len, md, ALGOS[a].mdlen);
-#endif
             printf("%s %d ", ALGOS[a].name, len);
             for (i = 0; i < ALGOS[a].mdlen; i++) printf("%02X", md[i]);
             printf("\n");

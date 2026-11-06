@@ -7,22 +7,16 @@
 
 // ----- Byte view of the rate word st[0] (B-01) -----
 
-// [OPT] B-01: these two helpers replace the byte alias c->st.b[] of the removed union.
+// [OPT] B-01: this helper replaces the byte alias c->st.b[] of the removed union.
 //       Ascon-Hash256 has an 8-byte rate = st[0]: every byte the sponge touches
 //       (absorb j < 8, padding pt < 8, squeeze i < 8) is lane idx of st[0],
 //       bits [8*idx+7 : 8*idx] (little-endian, as in NIST SP 800-232).
 //       The word index is the constant 0: no word select at all, only a byte-lane
 //       select (shift by a multiple of 8 = decoder + AND/OR, no barrel shifter).
 //       Hybrid/SHA-3 need the generic word >> 3 addressing instead (LOG-013).
-
-uint8_t st0_get_byte(const uint64_t st[5], int idx) {
-
-    // leaf helper: inlined so the lane select is merged into the calling loop
-
-    #pragma HLS INLINE
-
-    return (uint8_t)(st[0] >> (8 * (idx & 7)));
-}
+// [WAS] B-01: st0_get_byte(st, idx), used by the byte-wise squeeze
+// [OPT] B-03: removed, the squeeze emits st[0] whole (one AXI4-Stream beat per block);
+//       st0_xor_byte() is still needed by the padding (byte position c->pt)
 
 void st0_xor_byte(uint64_t st[5], int idx, uint8_t v) {
 
@@ -219,14 +213,16 @@ void keccakf_asconp12(uint64_t st[5]) {      // [WAS] uint64_t st[25]
     } // end of rounds
 }
 
-int hash_init(hash_ctx_t *c, int mdlen) {
+int hash_init(hash_ctx_t *c) {
     
     /*
         Initializes a hash context for either SHA-3 or Ascon.
+        [WAS] hash_init(c, mdlen)
+        [OPT] B-03: no mdlen, Ascon-Hash256 has a fixed 32-byte digest
     */
 
     // inlining hash_init into the top module allows
-    // all keccakf call-sites (init/update/final) to live in one scope
+    // all keccakf call-sites (init/absorb/squeeze) to live in one scope
     // so that the single-instance allocation cover the whole call tree
     // inlining is area-neutral because the function is called only one time
 
@@ -254,7 +250,7 @@ int hash_init(hash_ctx_t *c, int mdlen) {
 
     // Ascon has a fixed 8-byte rate.
     
-    c->mdlen = mdlen;
+    // [WAS] c->mdlen = mdlen;   (never read)
     c->rsiz = 8;
     c->pt = 0;
 
@@ -265,72 +261,98 @@ int hash_init(hash_ctx_t *c, int mdlen) {
     return 1;
 }
 
-int hash_update(hash_ctx_t *c, const void *data, size_t len) {
+int hash_absorb(hash_ctx_t *c, hls::stream<axis64_t> &in, int inlen) {
     
     /*
-        Absorbs input data into the state.  
+        Absorbs the message, read from the AXI4-Stream `in`, into the state.
+        Same stream logic as Hybrid-Test (LOG-014), specialized to the Ascon rate.
+
+        [WAS] hash_update(c, const void *data, size_t len): one byte per iteration,
+              st0_xor_byte() at lane j, permutation when j reached rsiz = 8
+        [OPT] B-03: rate = 8 bytes = one beat: each full beat is XORed into st[0]
+              and followed by the permutation; no word index is needed
+
+        Length: inlen (AXI4-Lite) says how many bytes are hashed, TLAST says where the stream
+        ends. The loop always consumes the stream up to TLAST (no stall, no beat left for the
+        next message); a mismatch returns 1. inlen = 0: no beat is read.
     */
 
-    // inlining hash_update into the top module allows
-    // all keccakf call-sites (init/update/final) to live in one scope
+    // inlining hash_absorb into the top module allows
+    // all keccakf call-sites (init/absorb/squeeze) to live in one scope
     // so that the single-instance allocation cover the whole call tree
     // inlining is area-neutral because the function is called only one time
 
     #pragma HLS INLINE
 
-    size_t i;
-    int j;
+    int nbeats = (inlen + 7) >> 3;      // beats = Ascon blocks carrying the message: ceil(inlen / 8)
+    int rem    = inlen & 7;             // valid bytes in the last beat (0 = full beat)
+    int b      = 0;                     // beats read so far
+    bool last  = (nbeats == 0);         // empty message: nothing to read
 
-    j = c->pt;
-    
-    absorbing_loop: for (i = 0; i < len; i++){
+    absorbing_loop: while (!last) {
 
         // pipelining this loop results in a resource explosion because it calls the whole permutation fuction
-        // [EXPLORED] #pragma HLS PIPELINE (Ascon E1): memory dependency on st,
-        //            target II not met (II=12) -> removed from E2 onwards
-        // the only reasonable pragma is to specify the trip count
-        // the upper bound is 256 because it is the size of the input buffer that determines it
-		
-        #pragma HLS LOOP_TRIPCOUNT min=0 max=256
+        // [WAS] LOOP_TRIPCOUNT min=0 max=256 (bytes of the in[256] buffer)
+        // [OPT] B-03: trip count in beats; 32 beats = 256 bytes keeps the reports comparable
 
-        // XORs message bytes into the state one by one (absorb phase).
-        
-        // [WAS] c->st.b[j++] ^= ((const uint8_t *) data)[i];
-        // [OPT] B-01: byte XOR into lane j of st[0] (j < rsiz = 8)
+        #pragma HLS LOOP_TRIPCOUNT min=0 max=32
 
-        st0_xor_byte(c->st, j, ((const uint8_t *) data)[i]);
-        j++;
-        
-        // When the block is full (rsiz), permute it.
-        
-        if (j >= c->rsiz){
-            
-            absorb_perm: keccakf_asconp12(c->st);    // [WAS] c->st.q
-            j = 0;
+        axis64_t beat = in.read();      // blocks until the DMA presents a beat (TVALID)
+        last = beat.last;
+
+        if (b < nbeats) {               // beats beyond inlen are only drained
+
+            uint64_t d = (uint64_t) beat.data;
+
+            if (b == nbeats - 1 && rem != 0) {
+
+                // last, partial block: only the first rem bytes belong to the message
+
+                d &= (((uint64_t) 1) << (8 * rem)) - 1;
+                c->st[0] ^= d;
+                c->pt = rem;            // padding byte right after the message
+
+            } else {
+
+                // full block: XOR into the rate word and permute
+
+                c->st[0] ^= d;
+
+                absorb_perm: keccakf_asconp12(c->st);
+
+                c->pt = 0;              // padding at the start of the next block
+            }
         }
-    }
-    
-    c->pt = j;
 
-    return 1;
+        b++;
+    }
+
+    return (b == nbeats) ? 0 : 1;       // 1: TLAST did not match inlen
 }
 
-int hash_final(void *md, hash_ctx_t *c) {
+void hash_squeeze(hash_ctx_t *c, hls::stream<axis64_t> &out) {
     
     /*
-        Finalizes the hash and squeezes output bytes.
+        Finalizes the hash and writes the digest to the AXI4-Stream `out`.
+
+        [WAS] hash_final(void *md, c): squeezing_1..4, 8-iteration byte loops (st0_get_byte)
+        [OPT] B-03: each 8-byte digest block is the rate word st[0] -> one beat;
+              4 beats (32 bytes), TLAST on the 4th; the three permutation call-sites are kept
     */
 
-    // inlining hash_final into the top module allows
-    // all keccakf call-sites (init/update/final) to live in one scope
+    // inlining hash_squeeze into the top module allows
+    // all keccakf call-sites (init/absorb/squeeze) to live in one scope
     // so that the single-instance allocation cover the whole call tree
     // inlining is area-neutral because the function is called only one time
 
     #pragma HLS INLINE
     
-    int i;
+    axis64_t beat;
+
+    // every field of the output beat is driven (TUSER/TID/TDEST have zero width)
+    beat.data = 0; beat.keep = 0xFF; beat.strb = 0xFF; beat.last = 0;
     
-    // --- Apply domain-separation padding for each algorithm ---
+    // --- Apply domain-separation padding ---
 
     st0_xor_byte(c->st, c->pt, 0x01);       // [WAS] c->st.b[c->pt] ^= 0x01;
 
@@ -340,68 +362,48 @@ int hash_final(void *md, hash_ctx_t *c) {
     
     // --- Output ---
 
-	// Output 4×8 bytes blocks (32 bytes total), applying permutation between squeezes (like sponge squeezing).
+	// Output 4 x 8 bytes (32 bytes total), applying the permutation between squeezes.
 
 	// [EXPLORED] #pragma HLS UNROLL on squeezing_1..4 (Ascon E10-E12): hash_final becomes
 	//            a separate module with a SECOND permutation copy, est. 4.7k -> 6.6k LUT
-	//            -> kept rolled with PIPELINE II=1
-	squeezing_1: for (i = 0; i < 8; i++) {
+	// [WAS] squeezing_1..4: 8-iteration byte loops, PIPELINE II=1
+	// [OPT] B-03: one beat per block, no loop left
 
-        // II=1 is feasible here because each iteration does one read and one write
-
-        #pragma HLS pipeline II=1
-
-        ((uint8_t *) md)[i] = st0_get_byte(c->st, i);       // [WAS] c->st.b[i]
-    }
+    beat.data = c->st[0]; beat.last = 0; out.write(beat);      // squeeze 1
 
 	final_perm_1: keccakf_asconp12(c->st);  // [WAS] c->st.q
-	
-	squeezing_2: for (i = 0; i < 8; i++) {
 
-        // II=1 is feasible here because each iteration does one read and one write
-
-        #pragma HLS pipeline II=1
-
-        ((uint8_t *) md)[i+8] = st0_get_byte(c->st, i);  // [WAS] c->st.b[i]
-    }
+    beat.data = c->st[0]; beat.last = 0; out.write(beat);      // squeeze 2
 
 	final_perm_2: keccakf_asconp12(c->st);  // [WAS] c->st.q
-	
-	squeezing_3: for (i = 0; i < 8; i++) {
 
-        // II=1 is feasible here because each iteration does one read and one write
-
-        #pragma HLS pipeline II=1
-
-        ((uint8_t *) md)[i+16] = st0_get_byte(c->st, i);  // [WAS] c->st.b[i]
-    }
+    beat.data = c->st[0]; beat.last = 0; out.write(beat);      // squeeze 3
 
 	final_perm_3: keccakf_asconp12(c->st);  // [WAS] c->st.q
-	
-	squeezing_4: for (i = 0; i < 8; i++)  {
 
-        // II=1 is feasible here because each iteration does one read and one write
-
-        #pragma HLS pipeline II=1
-
-        ((uint8_t *) md)[i+24] = st0_get_byte(c->st, i);  // [WAS] c->st.b[i]
-
-    }
-    
-    return 1;
+    beat.data = c->st[0]; beat.last = 1; out.write(beat);      // squeeze 4, TLAST
 }
 
-void hash(const void *in, size_t inlen, void *md, int mdlen) {
-    
+int hash_top(hls::stream<axis64_t> &in, hls::stream<axis64_t> &out, int inlen) {
+
     /*
-        Function wrapper, compute the hash of given byte length from "in"
+        This is the top-level interface (the IP), same structure as Hybrid-Test (LOG-014).
+
+        [WAS] void hash_top(uint8_t in[256], int inlen, uint8_t md[64], int mdlen)
+              wrapper with bounded arrays (ap_memory ports) around the software function hash()
+        [OPT] B-03: hash_top IS the accelerator; it owns the context and calls the sponge phases.
+              Data on AXI4-Stream (AXI DMA: MM2S -> in, out -> S2MM), inlen and block control
+              (ap_start/ap_done/ap_return) on AXI4-Lite. No mode / mdlen: standalone, 32-byte digest.
     */
 
-    // inlining hash into hash_top allw the whole body (the state RAM + the single permutation instance + all phases)
-    // lives in the same top scope where the interface/allocation directives apply
+    // [WAS] commented: mode=axis on the arrays gave wrong digests in cosim (array semantics)
+    // [OPT] B-03: axis on hls::stream ports, s_axilite on the scalar and on return
 
-    #pragma HLS INLINE
-    
+    #pragma HLS INTERFACE mode=axis      port=in
+    #pragma HLS INTERFACE mode=axis      port=out
+    #pragma HLS INTERFACE mode=s_axilite port=inlen
+    #pragma HLS INTERFACE mode=s_axilite port=return
+
     hash_ctx_t H;
 
     // [WAS] partitioning disabled because the union on st made the state non-partitionable
@@ -411,35 +413,11 @@ void hash(const void *in, size_t inlen, void *md, int mdlen) {
 
     //#pragma HLS ARRAY_PARTITION variable=H.st dim=1 type=complete
 
-    init_call:  hash_init   (&H, mdlen);
-    abs_call:   hash_update (&H, in, inlen);
-    sqz_call:   hash_final  (md, &H);
+    int err;
 
-    //return md;
-}
+    init_call:  hash_init   (&H);
+    abs_call:   err = hash_absorb (&H, in, inlen);
+    sqz_call:   hash_squeeze(&H, out);
 
-void hash_top(uint8_t in[256], int inlen, uint8_t md[64], int mdlen) {
-
-    /*
-        This is the top-level interface
-    */
-
-    // This wrapper is added because hash() takes void* pointers which cannot be synthesized as top-level ports.
-    // HLS needs a concrete element type and a bounded size to build an interface.
-    // It exposes typed, size-bounded ports (in[256], md[64]) and forwards to the unchanged hash() core
-
-    /*
-    #pragma HLS INTERFACE mode=axis      port=in
-    #pragma HLS INTERFACE mode=axis      port=md
-    #pragma HLS INTERFACE mode=s_axilite port=inlen
-    #pragma HLS INTERFACE mode=s_axilite port=mdlen
-    #pragma HLS INTERFACE mode=s_axilite port=return
-    */
-
-    // For data ports (in, md) the interface AXI4-Stream allows sequential byte flows, accessed once in order.
-    // For control scalars (inlen, mdlen) we use AXI4-Lite, a scalar on a stream would be an anti-pattern.
-
-    // see hls::stream with TLAST for a fully robust stream design
-
-    hash(in, inlen, md, mdlen);
+    return err;
 }
