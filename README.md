@@ -59,7 +59,7 @@ ascon-sha3-hybrid-hls/            # = workspace Vitis Unified (Vitis-HLS_Compone
 ├── .gitignore  .gitattributes    # esclusi build/cache Vitis; testo normalizzato LF
 │
 ├── Hybrid-Test/                  # componente HLS — variante ibrida (SHA-3 + Ascon, `mode` a runtime)
-│   ├── hash.h  hash.c  main.c    #   sorgenti (unica copia, letta da GUI e Tcl) + testbench KAT/throughput
+│   ├── hash.h  hash.cpp  main.cpp #  sorgenti C++ (unica copia, letta da GUI e Tcl) + testbench KAT/robust/throughput
 │   ├── hls_config.cfg            #   configurazione HLS per la GUI (allineata al flusso Tcl)
 │   ├── vitis-comp.json           #   descrittore del componente per l'IDE
 │   └── Hybrid-Test/              #   work_dir della GUI: non versionato (solo ispezione)
@@ -112,7 +112,7 @@ Le cartelle `vivado/` (block design KV260) e `sw/` (applicazioni di test sulla b
 | **`Sha-Test/`** | `hash_top` | Implementazione dedicata SHA-3/Keccak. |
 | **`Ascon-Test/`** | `hash_top` | Implementazione dedicata Ascon-Hash. |
 
-Ogni variante è composta da `hash.h`, `hash.c`, `main.c` e `hls_config.cfg`; i candidati di ottimizzazione a livello logico, ordinati per impatto, sono in `docs/optimizations/ottimizzazioni_logiche_{hybrid,sha3,ascon}.md`.
+Ogni variante è composta da `hash.h`, `hash.cpp`, `main.cpp` e `hls_config.cfg` (C++ dal B-03, LOG-014); i candidati di ottimizzazione a livello logico, ordinati per impatto, sono in `docs/optimizations/ottimizzazioni_logiche_{hybrid,sha3,ascon}.md`.
 
 **Due basi di codice:**
 
@@ -128,34 +128,33 @@ La convenzione `mode` nel core unificato è:
 
 ## API e interfaccia
 
-Interfaccia in stile **OpenSSL**, con separazione tra la funzione software riusabile (`hash`, basata su puntatori) e il **wrapper hardware sintetizzabile** (`hash_top`):
+Dal B-03 (LOG-014) il top `hash_top` **è l'IP**: dati su **AXI4-Stream a 64 bit**, parametri e controllo su **AXI4-Lite**. L'API software a puntatori (`hash()`, `hash_update`, `hash_final`) è stata rimossa; resta un solo percorso, quello hardware.
 
-```c
-// state context
-typedef struct {
-    union {                 // due viste sulla stessa area di memoria:
-        uint8_t  b[200];    //   8-bit bytes
-        uint64_t q[25];     //   64-bit words
-    } st;
-    int pt, rsiz, mdlen, mode;
-} hash_ctx_t;
+```cpp
+typedef ap_axiu<64, 0, 0, 0> axis64_t;              // un beat = una word di stato (TDATA/TKEEP/TSTRB/TLAST)
 
-// funzione di compressione condivisa (permutazione Keccak-f / Ascon-p12)
-void keccakf_asconp12(uint64_t st[25], uint8_t mode);
+// stato: solo word (B-01, LOG-013); Ascon-Test usa uint64_t st[5]
+typedef struct { uint64_t st[25]; int pt, rsiz, mdlen, mode; } hash_ctx_t;
 
-// interfaccia OpenSSL-like
-int hash_init  (hash_ctx_t *c, int mdlen, uint8_t mode);
-int hash_update(hash_ctx_t *c, const void *data, size_t len, uint8_t mode);
-int hash_final (void *md, hash_ctx_t *c, uint8_t mode);
+void keccakf_asconp12(uint64_t st[25], uint8_t mode);                               // permutazione condivisa
+int  hash_init   (hash_ctx_t *c, int mdlen, uint8_t mode);
+int  hash_absorb (hash_ctx_t *c, hls::stream<axis64_t> &in, int inlen, uint8_t mode);  // 1 = TLAST != inlen
+void hash_squeeze(hash_ctx_t *c, hls::stream<axis64_t> &out, uint8_t mode);
 
-// funzione software riusabile (basata su puntatori)
-void hash(const void *in, size_t inlen, void *md, int mdlen, uint8_t mode);
-
-// wrapper hardware sintetizzabile (confine per la sintesi HLS)
-void hash_top(uint8_t in[256], int inlen, uint8_t md[64], int mdlen, uint8_t mode);
+int  hash_top(hls::stream<axis64_t> &in, hls::stream<axis64_t> &out,              // Hybrid-Test
+              int inlen, int mdlen, uint8_t mode);
+// Sha-Test:   int hash_top(in, out, inlen, mdlen)        Ascon-Test: int hash_top(in, out, inlen)
 ```
 
-Il wrapper `hash_top` è il **confine hardware sintetizzabile** attorno alla funzione `hash` basata su puntatori, che resta disponibile come funzione software riusabile.
+| AXI4-Lite (`s_axi_control`) | Offset | Hybrid | SHA-3 | Ascon |
+|---|---|:-:|:-:|:-:|
+| `CTRL` (ap_start, ap_done, …) | `0x00` | ✓ | ✓ | ✓ |
+| `ap_return` (0 = OK, 1 = TLAST ≠ `inlen`) | `0x10` | ✓ | ✓ | ✓ |
+| `inlen` | `0x18` | ✓ | ✓ | ✓ |
+| `mdlen` | `0x20` | ✓ | ✓ | – |
+| `mode` (0 = Ascon, > 0 = SHA-3) | `0x28` | ✓ | – | – |
+
+**Uso con AXI DMA:** il software scrive `inlen` (e `mdlen`/`mode`), avvia l'IP (`ap_start`), poi il canale S2MM (digest, `ceil(mdlen/8)` beat con TLAST) e il canale MM2S (messaggio, `ceil(inlen/8)` beat, byte 0 in `TDATA[7:0]`). L'IP consuma sempre lo stream fino a TLAST, quindi un DMA programmato male non lo blocca e non sporca il messaggio successivo; il mismatch si legge in `ap_return`. Messaggio vuoto: `inlen = 0` e nessun trasferimento MM2S.
 
 ## Filosofia di ottimizzazione e metrica
 
@@ -171,6 +170,8 @@ Il wrapper `hash_top` è il **confine hardware sintetizzabile** attorno alla fun
 Nella variante unificata i **conteggi di round variabili a runtime** (dipendenti da `mode`) impediscono l'unrolling che è invece possibile nelle varianti standalone, dove i limiti sono costanti a compile-time.
 
 ## Il collo di bottiglia della union
+
+> **Risolto in B-01 (LOG-013):** lo stato è solo `uint64_t st[25]` (Ascon: `st[5]`) con viste a byte via shift/mask; il partizionamento esplicito dello stato è il passo successivo. La sezione resta come motivazione.
 
 Il vincolo strutturale centrale — e uno degli argomenti forti della tesi — è la **`union`** in `hash_ctx_t` che permette di vedere lo stato come `uint8_t b[200]` e `uint64_t q[25]`. Le due viste servono perché lo stato viene indirizzato in due modi (ad es. nell'absorbing loop), ma:
 
@@ -190,21 +191,21 @@ Questo impatterebbe l'absorbing loop in `hash_update()` e il padding/squeezing i
 
 ## Verifica funzionale (KAT)
 
-La correttezza è verificata con **Known Answer Test (KAT)** tramite gcc. Il testbench (`main.c`) copre **SHA3-256** (messaggio corto), **SHA3-512** (messaggio multiblocco) e **Ascon-Hash** (output a 256 bit); confronta il digest calcolato con quello atteso (`memcmp`) e stampa `All Self-Tests OK!` in caso di successo.
+La correttezza è verificata con **Known Answer Test (KAT)**. Il testbench (`main.cpp`) fa le veci del DMA: impacchetta il messaggio in beat, legge il digest dallo stream e controlla TLAST, TKEEP, eventuali beat avanzati e `ap_return`. Copre **SHA3-256** (messaggio corto), **SHA3-512** (messaggio multiblocco) e **Ascon-Hash256** (incluso il messaggio vuoto); `-argv robust` verifica la gestione di una lunghezza DMA errata, `-argv <algo>` è la modalità throughput.
+
+Il **test di equivalenza** (`bash tests/equivalence/run.sh all`, g++ con gli header di Vitis) confronta `hash_top` con riferimenti indipendenti (Python `hashlib`, `pyascon`) su tutte le lunghezze 0–256 e tutti gli algoritmi di ogni variante.
 
 ## Risultati HLS attuali
 
-Flusso Tcl (`scripts/hls/`) in Vitis HLS 2025.1 su tutte e tre le varianti (csim → csynth → cosim → implementation out-of-context), part `xck26-sfvc784-2LV-c`, design **`baseline`**, clock target **10 ns (100 MHz)**. Valori post-route da `results/hls/baseline/summary.csv` (sweep completo 10 / 6.67 / 5 / 4 ns in `LOGBOOK.md`, LOG-010):
+Flusso Tcl (`scripts/hls/`), Vitis HLS 2025.1, part `xck26-sfvc784-2LV-c`, design **`b03`** (union rimossa + interfaccia AXI), clock target **10 ns**. Area e frequenza post-route Vivado OOC, cicli per blocco dalla cosim di throughput (`results/hls/b03/`):
 
-| Variante | LUT | FF | BRAM | DSP | Period post-route | Cosim latency min / avg / max (cicli) |
-|---|---:|---:|---:|---:|---:|---|
-| Hybrid | 3281 | 2215 | 10 | 0 | 6.169 ns | 2287 / 5853 / 14352 |
-| SHA-3 | 2214 | 1551 | 10 | 0 | 6.023 ns | 3449 / 8849 / 14250 |
-| Ascon | 1148 | 1020 | 4 | 0 | 4.735 ns | 160 / 238 / 317 |
+| Variante | LUT | FF | BRAM | f post-route | TP SHA3-256 / SHA3-512 / Ascon [Mbps] |
+|---|---:|---:|---:|---:|---|
+| Hybrid | 3665 | 3244 | 0 | 187.8 MHz | 62.1 / 33.1 / 26.8 |
+| SHA-3 | 2527 | 2613 | 0 | 200.0 MHz | 66.6 / 35.5 / – |
+| Ascon | 1103 | 1270 | 4 | 257.7 MHz | – / – / 687.2 |
 
-Timing chiuso in tutte le varianti e in tutti i punti dello sweep. Le latenze di cosim aggregano i vettori KAT del testbench (messaggi e algoritmi diversi), quindi non sono direttamente confrontabili tra varianti: il confronto *throughput-to-area* per algoritmo è in roadmap.
-
-> ⚠️ In questa versione le `#pragma HLS INTERFACE` di `hash_top` sono commentate: l'IP esportato ha porte `ap_memory`/`ap_none` e **non è ancora integrabile** in un block design con lo Zynq PS. Il wrapper AXI è il prossimo step (vedi `LOGBOOK.md`).
+Timing chiuso ovunque. Confronto completo, area per modulo e osservazioni in `LOGBOOK.md` (LOG-014); `baseline` (sweep del clock, LOG-010) e `b01` (LOG-013) restano in `results/hls/<design>/`.
 
 ## Come compilare ed eseguire i test
 
@@ -216,6 +217,8 @@ sudo sysctl -w kernel.perf_event_paranoid=2   # contatori hardware (opzionale, f
 ./run_all.sh          # oppure ./run_all.sh quick; output in results/<piattaforma>/
 ```
 
+> ⚠️ Dal B-03 (LOG-014) i sorgenti sono C++ e `hash()` non esiste più: il benchmark va adattato e per ora non compila.
+
 Misura una chiamata a `hash()` compilata **direttamente dai sorgenti Vitis**: latenza per chiamata (distribuzione), cicli core reali, istruzioni, IPC e cicli/byte (contatori PMU letti fuori dal loop misurato), e il footprint statico (contesto, stack, codice). Dettagli e istruzioni per la Kria in `benchmarks/software-latency/README.txt`.
 
 **Software (gcc)** — codice di riferimento pre-HLS:
@@ -226,7 +229,7 @@ make            # gcc -Wall -O3; `make clean` rimuove i binari
 ./hashtest      # atteso: All Self-Tests OK!
 ```
 
-Le varianti `*-Test/` compilano anche con gcc (`gcc -O2 hash.c main.c`): le pragma HLS vengono ignorate.
+Le varianti `*-Test/` compilano anche con g++ fuori da Vitis, con gli header HLS (`g++ -O2 -I"$VITIS_INC" hash.cpp main.cpp`, `VITIS_INC=/mnt/c/Xilinx/2025.1.1/Vitis/include` in WSL): le pragma HLS vengono ignorate.
 
 **Vitis HLS — flusso di riferimento (Tcl)**, da Windows (cmd/PowerShell) nella root della repo; la versione di design è quella di `scripts/hls/design.txt`:
 
@@ -277,14 +280,17 @@ La cartella `paper/` raccoglie la letteratura di riferimento, organizzata per te
 - [x] Repo allineata al workspace Vitis locale + `LOGBOOK.md`.
 - [x] Flusso HLS da Tcl, sweep del clock (10 / 6.67 / 5 / 4 ns) e risultati per versione di design (`results/hls/<design>/`).
 - [x] Testbench in modalità throughput (`-argv <algo>`, cicli per blocco da due transazioni RTL).
+- [x] Rimozione della `union` sullo stato nelle tre varianti (B-01, LOG-013) e test di equivalenza contro riferimenti indipendenti.
+- [x] Interfaccia AXI4-Stream (64 bit) + AXI4-Lite nelle tre varianti, sorgenti in C++ (B-03, LOG-014).
 - [x] Inquadramento teorico della crypto-agility (NIST CSWP 39) e raccolta bibliografica.
 
 **Roadmap (da `TODO.txt`)**
 
 *Priorità / test hardware*
 - [ ] Test dell'implementazione ibrida su ARM Kria.
-- [ ] Ottimizzazioni logiche pendenti, a partire dalla rimozione della `union` su `st` (`docs/optimizations/`).
-- [ ] **Wrapping dell'acceleratore ibrido** (interfaccia AXI4-Stream + AXI DMA) + test su FPGA Kria.
+- [ ] Ottimizzazioni logiche pendenti (`docs/optimizations/`): partizionamento esplicito dello stato e ristrutturazione dei loop, a partire dal ramo Ascon dell'Hybrid.
+- [ ] Integrazione con AXI DMA + test su FPGA Kria (lato HLS fatto in B-03).
+- [ ] Adattare il benchmark software ai sorgenti C++ a stream.
 - [ ] Block design Vivado (Zynq MPSoC + AXI DMA + IP), bitstream e applicazione di test sulla KV260.
 - [ ] Dataset post-implementation completo: area stimata vs reale, II di sintesi vs II osservato in cosim.
 

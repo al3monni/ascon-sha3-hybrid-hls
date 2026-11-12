@@ -1,0 +1,280 @@
+
+
+================================================================
+== Synthesis Summary Report of 'hash_top'
+================================================================
++ General Information: 
+    * Date:           Fri Nov  6 13:15:49 2026
+    * Version:        2025.1.1 (Build 6214317 on Sep 11 2025)
+    * Project:        T_10
+    * Solution:       hls (Vivado IP Flow Target)
+    * Product family: zynquplus
+    * Target device:  xck26-sfvc784-2LV-c
+    
+
++ Performance & Resource Estimates: 
+    
+    PS: '+' for module; 'o' for loop; '*' for dataflow
+    +------------------------------------------------------+------+------+---------+-----------+----------+---------+------+----------+---------+----+------------+-----------+-----+
+    |                        Modules                       | Issue|      |       Latency       | Iteration|         | Trip |          |         |    |            |           |     |
+    |                        & Loops                       | Type | Slack| (cycles)|    (ns)   |  Latency | Interval| Count| Pipelined|  BRAM   | DSP|     FF     |    LUT    | URAM|
+    +------------------------------------------------------+------+------+---------+-----------+----------+---------+------+----------+---------+----+------------+-----------+-----+
+    |+ hash_top                                            |     -|  2.52|   126928|  1.269e+06|         -|   126929|     -|        no|  16 (5%)|   -|  2203 (~0%)|  4795 (4%)|    -|
+    | + hash_top_Pipeline_init_loop                        |     -|  4.85|       27|    270.000|         -|       26|     -|    rewind|        -|   -|     7 (~0%)|   51 (~0%)|    -|
+    |  o init_loop                                         |     -|  7.30|       25|    250.000|         1|        1|    25|       yes|        -|   -|           -|          -|    -|
+    | + hash_top_Pipeline_output_loop                      |     -|  5.46|       10|    100.000|         -|        9|     -|    rewind|        -|   -|    39 (~0%)|  169 (~0%)|    -|
+    |  o output_loop                                       |     -|  7.30|        8|     80.000|         2|        1|     8|       yes|        -|   -|           -|          -|    -|
+    | o absorbing_loop                                     |     -|  7.30|   123040|  1.230e+06|      3845|        -|    32|        no|        -|   -|           -|          -|    -|
+    |  + keccakf_asconp12                                  |     -|  2.52|     3841|  3.841e+04|         -|     3841|     -|        no|        -|   -|  1342 (~0%)|  2601 (2%)|    -|
+    |   o rounds_loop                                      |     -|  7.30|     3840|  3.840e+04|       160|        -|    24|        no|        -|   -|           -|          -|    -|
+    |    + keccakf_asconp12_Pipeline_theta_C               |     -|  4.84|        7|     70.000|         -|        6|     -|    rewind|        -|   -|   329 (~0%)|  362 (~0%)|    -|
+    |     o theta_C                                        |     -|  7.30|        5|     50.000|         2|        1|     5|       yes|        -|   -|           -|          -|    -|
+    |    + keccakf_asconp12_Pipeline_theta_D_theta_D_loop  |     -|  3.64|       27|    270.000|         -|       26|     -|    rewind|        -|   -|    27 (~0%)|  381 (~0%)|    -|
+    |     o theta_D_theta_D_loop                           |     -|  7.30|       25|    250.000|         2|        1|    25|       yes|        -|   -|           -|          -|    -|
+    |    + keccakf_asconp12_Pipeline_rho_pi_loop           |     -|  2.52|       26|    260.000|         -|       25|     -|    rewind|        -|   -|   212 (~0%)|  901 (~0%)|    -|
+    |     o rho_pi_loop                                    |     -|  7.30|       24|    240.000|         2|        1|    24|       yes|        -|   -|           -|          -|    -|
+    |    o top_chi                                         |     -|  7.30|       90|    900.000|        18|        -|     5|        no|        -|   -|           -|          -|    -|
+    |     + keccakf_asconp12_Pipeline_bc_cp_chi            |     -|  4.85|        7|     70.000|         -|        6|     -|    rewind|        -|   -|   329 (~0%)|  117 (~0%)|    -|
+    |      o bc_cp_chi                                     |     -|  7.30|        5|     50.000|         2|        1|     5|       yes|        -|   -|           -|          -|    -|
+    |     + keccakf_asconp12_Pipeline_chi_nlin             |     -|  4.23|        7|     70.000|         -|        6|     -|    rewind|        -|   -|    17 (~0%)|  327 (~0%)|    -|
+    |      o chi_nlin                                      |     -|  7.30|        5|     50.000|         2|        1|     5|       yes|        -|   -|           -|          -|    -|
+    +------------------------------------------------------+------+------+---------+-----------+----------+---------+------+----------+---------+----+------------+-----------+-----+
+
+
+================================================================
+== HW Interfaces
+================================================================
+* S_AXILITE Interfaces
++---------------+------------+---------------+--------+----------+
+| Interface     | Data Width | Address Width | Offset | Register |
++---------------+------------+---------------+--------+----------+
+| s_axi_control | 32         | 6             | 24     | 0        |
++---------------+------------+---------------+--------+----------+
+
+* S_AXILITE Registers
++---------------+-----------+--------+-------+--------+----------------------------------+----------------------------------------------------------------------+
+| Interface     | Register  | Offset | Width | Access | Description                      | Bit Fields                                                           |
++---------------+-----------+--------+-------+--------+----------------------------------+----------------------------------------------------------------------+
+| s_axi_control | CTRL      | 0x00   | 32    | RW     | Control signals                  | 0=AP_START 1=AP_DONE 2=AP_IDLE 3=AP_READY 7=AUTO_RESTART 9=INTERRUPT |
+| s_axi_control | GIER      | 0x04   | 32    | RW     | Global Interrupt Enable Register | 0=Enable                                                             |
+| s_axi_control | IP_IER    | 0x08   | 32    | RW     | IP Interrupt Enable Register     | 0=CHAN0_INT_EN 1=CHAN1_INT_EN                                        |
+| s_axi_control | IP_ISR    | 0x0c   | 32    | RW     | IP Interrupt Status Register     | 0=CHAN0_INT_ST 1=CHAN1_INT_ST                                        |
+| s_axi_control | ap_return | 0x10   | 32    | R      | Data signal of ap_return         |                                                                      |
+| s_axi_control | inlen     | 0x18   | 32    | W      | Data signal of inlen             |                                                                      |
+| s_axi_control | mdlen     | 0x20   | 32    | W      | Data signal of mdlen             |                                                                      |
++---------------+-----------+--------+-------+--------+----------------------------------+----------------------------------------------------------------------+
+
+* AXIS
++-----------+-----------+---------------+-------+-------+-------+--------+-------+--------+
+| Interface | Direction | Register Mode | TDATA | TKEEP | TLAST | TREADY | TSTRB | TVALID |
++-----------+-----------+---------------+-------+-------+-------+--------+-------+--------+
+| in_r      | in        | both          | 64    | 8     | 1     | 1      | 8     | 1      |
+| out_r     | out       | both          | 64    | 8     | 1     | 1      | 8     | 1      |
++-----------+-----------+---------------+-------+-------+-------+--------+-------+--------+
+
+* TOP LEVEL CONTROL
++-----------+------------+-----------+
+| Interface | Type       | Ports     |
++-----------+------------+-----------+
+| ap_clk    | clock      | ap_clk    |
+| ap_rst_n  | reset      | ap_rst_n  |
+| interrupt | interrupt  | interrupt |
+| ap_ctrl   | ap_ctrl_hs |           |
++-----------+------------+-----------+
+
+
+================================================================
+== SW I/O Information
+================================================================
+* Top Function Arguments
++----------+-----------+---------------------------------------------------------+
+| Argument | Direction | Datatype                                                |
++----------+-----------+---------------------------------------------------------+
+| in       | in        | stream<hls::axis<ap_uint<64>, 0, 0, 0, '8', false>, 0>& |
+| out      | out       | stream<hls::axis<ap_uint<64>, 0, 0, 0, '8', false>, 0>& |
+| inlen    | in        | int                                                     |
+| mdlen    | in        | int                                                     |
+| return   | out       | int                                                     |
++----------+-----------+---------------------------------------------------------+
+
+* SW-to-HW Mapping
++----------+---------------+-----------+-------------------------------------+
+| Argument | HW Interface  | HW Type   | HW Info                             |
++----------+---------------+-----------+-------------------------------------+
+| in       | in_r          | interface |                                     |
+| out      | out_r         | interface |                                     |
+| inlen    | s_axi_control | register  | name=inlen offset=0x18 range=32     |
+| mdlen    | s_axi_control | register  | name=mdlen offset=0x20 range=32     |
+| return   | s_axi_control | register  | name=ap_return offset=0x10 range=32 |
++----------+---------------+-----------+-------------------------------------+
+
+
+================================================================
+== M_AXI Burst Information
+================================================================
+ Note: All burst requests might be further partitioned into multiple requests during RTL generation based on max_read_burst_length or max_write_burst_length settings.
+
+
+================================================================
+== Bind Op Report
+================================================================
++----------------------------------------------------+-----+--------+------------------+-----------+--------------------------+---------+
+| Name                                               | DSP | Pragma | Variable         | Op        | Impl                     | Latency |
++----------------------------------------------------+-----+--------+------------------+-----------+--------------------------+---------+
+| + hash_top                                         | 0   |        |                  |           |                          |         |
+|   H_rsiz_fu_257_p2                                 |     |        | H_rsiz           | sub       | fabric                   | 0       |
+|   add_ln348_fu_267_p2                              |     |        | add_ln348        | add       | fabric                   | 0       |
+|   last_fu_305_p2                                   |     |        | last             | seteq     | auto                     | 0       |
+|   sub_i28_fu_311_p2                                |     |        | sub_i28          | add       | fabric                   | 0       |
+|   cmp6_i_fu_321_p2                                 |     |        | cmp6_i           | seteq     | auto                     | 0       |
+|   shl_i31_fu_339_p2                                |     |        | shl_i31          | shl       | auto_pipe                | 0       |
+|   sub8_i_fu_349_p2                                 |     |        | sub8_i           | add       | fabric                   | 0       |
+|   b_2_fu_358_p2                                    |     |        | b_2              | add       | fabric                   | 0       |
+|   icmp_ln366_fu_376_p2                             |     |        | icmp_ln366       | setlt     | auto                     | 0       |
+|   icmp_ln370_fu_381_p2                             |     |        | icmp_ln370       | setne     | auto                     | 0       |
+|   or_ln370_fu_386_p2                               |     |        | or_ln370         | or        | auto                     | 0       |
+|   d_1_fu_438_p2                                    |     |        | d_1              | and       | auto                     | 0       |
+|   xor_ln375_fu_446_p2                              |     |        | xor_ln375        | xor       | auto                     | 0       |
+|   xor_ln382_fu_468_p2                              |     |        | xor_ln382        | xor       | auto                     | 0       |
+|   w_1_fu_474_p2                                    |     |        | w_1              | add       | fabric                   | 0       |
+|   icmp_ln385_fu_479_p2                             |     |        | icmp_ln385       | seteq     | auto                     | 0       |
+|   shl_ln26_fu_520_p2                               |     |        | shl_ln26         | shl       | auto_pipe                | 0       |
+|   xor_ln26_fu_530_p2                               |     |        | xor_ln26         | xor       | auto                     | 0       |
+|   add_ln430_fu_537_p2                              |     |        | add_ln430        | add       | fabric                   | 0       |
+|   shl_ln26_1_fu_572_p2                             |     |        | shl_ln26_1       | shl       | auto_pipe                | 0       |
+|   xor_ln26_1_fu_578_p2                             |     |        | xor_ln26_1       | xor       | auto                     | 0       |
+|   add_ln443_fu_418_p2                              |     |        | add_ln443        | add       | fabric                   | 0       |
+|   sub13_i_fu_591_p2                                |     |        | sub13_i          | add       | fabric                   | 0       |
+|   cmp15_i_fu_598_p2                                |     |        | cmp15_i          | seteq     | auto                     | 0       |
+|   shl_i_fu_604_p2                                  |     |        | shl_i            | shl       | auto_pipe                | 0       |
+|   conv2_i_i_i_cast_fu_614_p2                       |     |        | conv2_i_i_i_cast | add       | fabric                   | 0       |
+|   err_fu_433_p2                                    |     |        | err              | setne     | auto                     | 0       |
+|  + hash_top_Pipeline_init_loop                     | 0   |        |                  |           |                          |         |
+|    icmp_ln306_fu_52_p2                             |     |        | icmp_ln306       | seteq     | auto                     | 0       |
+|    add_ln306_fu_58_p2                              |     |        | add_ln306        | add       | fabric                   | 0       |
+|  + keccakf_asconp12                                | 0   |        |                  |           |                          |         |
+|    icmp_ln269_fu_293_p2                            |     |        | icmp_ln269       | seteq     | auto                     | 0       |
+|    add_ln269_fu_299_p2                             |     |        | add_ln269        | add       | fabric                   | 0       |
+|    icmp_ln175_fu_325_p2                            |     |        | icmp_ln175       | setlt     | auto                     | 0       |
+|    add_ln175_fu_351_p2                             |     |        | add_ln175        | add       | fabric                   | 0       |
+|    sparsemux_49_5_64_1_1_U46                       |     |        | tmp_4            | sparsemux | compactencoding_dontcare | 0       |
+|    xor_ln236_fu_509_p2                             |     |        | xor_ln236        | xor       | auto                     | 0       |
+|   + keccakf_asconp12_Pipeline_theta_C              | 0   |        |                  |           |                          |         |
+|     icmp_ln54_fu_180_p2                            |     |        | icmp_ln54        | seteq     | auto                     | 0       |
+|     add_ln54_fu_186_p2                             |     |        | add_ln54         | add       | fabric                   | 0       |
+|     add_ln65_fu_205_p2                             |     |        | add_ln65         | add       | fabric                   | 0       |
+|     add_ln65_1_fu_216_p2                           |     |        | add_ln65_1       | add       | fabric                   | 0       |
+|     add_ln65_2_fu_227_p2                           |     |        | add_ln65_2       | add       | fabric                   | 0       |
+|     add_ln65_3_fu_238_p2                           |     |        | add_ln65_3       | add       | fabric                   | 0       |
+|     xor_ln65_fu_266_p2                             |     |        | xor_ln65         | xor       | auto                     | 0       |
+|     xor_ln65_1_fu_272_p2                           |     |        | xor_ln65_1       | xor       | auto                     | 0       |
+|     xor_ln65_2_fu_278_p2                           |     |        | xor_ln65_2       | xor       | auto                     | 0       |
+|     bc_5_fu_284_p2                                 |     |        | bc_5             | xor       | auto                     | 0       |
+|   + keccakf_asconp12_Pipeline_theta_D_theta_D_loop | 0   |        |                  |           |                          |         |
+|     icmp_ln70_fu_139_p2                            |     |        | icmp_ln70        | seteq     | auto                     | 0       |
+|     add_ln70_fu_145_p2                             |     |        | add_ln70         | add       | fabric                   | 0       |
+|     icmp_ln80_fu_157_p2                            |     |        | icmp_ln80        | setlt     | auto                     | 0       |
+|     select_ln35_fu_163_p3                          |     |        | select_ln35      | select    | auto_sel                 | 0       |
+|     add_ln78_fu_171_p2                             |     |        | add_ln78         | add       | fabric                   | 0       |
+|     add_ln78_1_fu_177_p2                           |     |        | add_ln78_1       | add       | fabric                   | 0       |
+|     select_ln35_1_fu_183_p3                        |     |        | select_ln35_1    | select    | auto_sel                 | 0       |
+|     select_ln70_fu_191_p3                          |     |        | select_ln70      | select    | auto_sel                 | 0       |
+|     icmp_ln78_fu_235_p2                            |     |        | icmp_ln78        | setlt     | auto                     | 0       |
+|     add_ln78_2_fu_240_p2                           |     |        | add_ln78_2       | add       | fabric                   | 0       |
+|     tmp_fu_252_p12                                 |     |        | select_ln78      | select    | auto_sel                 | 0       |
+|     sparsemux_11_3_64_1_1_U8                       |     |        | tmp              | sparsemux | compactencoding_dontcare | 0       |
+|     empty_fu_275_p2                                |     |        | empty            | seteq     | auto                     | 0       |
+|     tmp_1_fu_287_p12                               |     |        | iv_rem           | select    | auto_sel                 | 0       |
+|     sparsemux_11_3_64_1_1_U9                       |     |        | tmp_1            | sparsemux | compactencoding_dontcare | 0       |
+|     add_ln86_fu_203_p2                             |     |        | add_ln86         | add       | fabric                   | 0       |
+|     xor_ln86_1_fu_330_p2                           |     |        | xor_ln86_1       | xor       | auto                     | 0       |
+|     xor_ln86_fu_336_p2                             |     |        | xor_ln86         | xor       | auto                     | 0       |
+|     add_ln80_fu_214_p2                             |     |        | add_ln80         | add       | fabric                   | 0       |
+|   + keccakf_asconp12_Pipeline_rho_pi_loop          | 0   |        |                  |           |                          |         |
+|     icmp_ln136_fu_198_p2                           |     |        | icmp_ln136       | seteq     | auto                     | 0       |
+|     add_ln136_fu_204_p2                            |     |        | add_ln136        | add       | fabric                   | 0       |
+|     sparsemux_49_5_5_1_1_U18                       |     |        | j                | sparsemux | compactencoding_dontcare | 0       |
+|     addr_cmp_fu_322_p2                             |     |        | addr_cmp         | seteq     | auto                     | 0       |
+|     t_2_fu_344_p3                                  |     |        | t_2              | select    | auto_sel                 | 0       |
+|     sparsemux_49_5_6_1_1_U19                       |     |        | zext_ln148_cast  | sparsemux | compactencoding_dontcare | 0       |
+|     shl_ln148_fu_458_p2                            |     |        | shl_ln148        | shl       | auto_pipe                | 0       |
+|     sub_ln148_fu_464_p2                            |     |        | sub_ln148        | sub       | fabric                   | 0       |
+|     lshr_ln148_fu_474_p2                           |     |        | lshr_ln148       | lshr      | auto_pipe                | 0       |
+|     or_ln148_fu_480_p2                             |     |        | or_ln148         | or        | auto                     | 0       |
+|   + keccakf_asconp12_Pipeline_bc_cp_chi            | 0   |        |                  |           |                          |         |
+|     icmp_ln184_fu_199_p2                           |     |        | icmp_ln184       | seteq     | auto                     | 0       |
+|     add_ln184_fu_205_p2                            |     |        | add_ln184        | add       | fabric                   | 0       |
+|     add_ln191_fu_215_p2                            |     |        | add_ln191        | add       | fabric                   | 0       |
+|   + keccakf_asconp12_Pipeline_chi_nlin             | 0   |        |                  |           |                          |         |
+|     icmp_ln194_fu_119_p2                           |     |        | icmp_ln194       | seteq     | auto                     | 0       |
+|     add_ln203_fu_125_p2                            |     |        | add_ln203        | add       | fabric                   | 0       |
+|     empty_fu_151_p2                                |     |        | empty            | seteq     | auto                     | 0       |
+|     tmp_5_fu_163_p12                               |     |        | iv_rem62         | select    | auto_sel                 | 0       |
+|     sparsemux_11_3_64_1_1_U36                      |     |        | tmp_5            | sparsemux | compactencoding_dontcare | 0       |
+|     sparsemux_11_3_64_1_1_x_U37                    |     |        | tmp_6            | sparsemux | compactencoding_dontcare | 0       |
+|     add_ln203_1_fu_135_p2                          |     |        | add_ln203_1      | add       | fabric                   | 0       |
+|     xor_ln203_fu_208_p2                            |     |        | xor_ln203        | xor       | auto                     | 0       |
+|     and_ln203_fu_214_p2                            |     |        | and_ln203        | and       | auto                     | 0       |
+|     xor_ln203_1_fu_220_p2                          |     |        | xor_ln203_1      | xor       | auto                     | 0       |
+|  + hash_top_Pipeline_output_loop                   | 0   |        |                  |           |                          |         |
+|    icmp_ln446_fu_146_p2                            |     |        | icmp_ln446       | setlt     | auto                     | 0       |
+|    add_ln446_fu_152_p2                             |     |        | add_ln446        | add       | fabric                   | 0       |
+|    beat_last_fu_167_p2                             |     |        | beat_last        | seteq     | auto                     | 0       |
+|    xor_ln455_fu_178_p2                             |     |        | xor_ln455        | xor       | auto                     | 0       |
+|    or_ln455_fu_183_p2                              |     |        | or_ln455         | or        | auto                     | 0       |
+|    beat_keep_fu_188_p3                             |     |        | beat_keep        | select    | auto_sel                 | 0       |
++----------------------------------------------------+-----+--------+------------------+-----------+--------------------------+---------+
+
+
+================================================================
+== Storage Report
+================================================================
++-------------------+--------------+-----------+------+------+--------+----------+------+---------+------------------+
+| Name              | Usage        | Type      | BRAM | URAM | Pragma | Variable | Impl | Latency | Bitwidth, Depth, |
+|                   |              |           |      |      |        |          |      |         | Banks            |
++-------------------+--------------+-----------+------+------+--------+----------+------+---------+------------------+
+| + hash_top        |              |           | 16   | 0    |        |          |      |         |                  |
+|   control_s_axi_U | interface    | s_axilite |      |      |        |          |      |         |                  |
+|   H_st_U          | rom_np array |           | 16   |      |        | H_st     | auto | 1       | 64, 25, 1        |
++-------------------+--------------+-----------+------+------+--------+----------+------+---------+------------------+
+
+
+================================================================
+== Pragma Report
+================================================================
+* Valid Pragma Syntax
++-----------------+-------------------------------------------+-----------------------------------------------------------+
+| Type            | Options                                   | Location                                                  |
++-----------------+-------------------------------------------+-----------------------------------------------------------+
+| INLINE          |                                           | ../../../../Sha-Test/hash.cpp:24 in st_xor_byte           |
+| INLINE          |                                           | ../../../../Sha-Test/hash.cpp:33 in theta                 |
+| ARRAY_PARTITION | variable=bc type=complete dim=1           | ../../../../Sha-Test/hash.cpp:42 in theta, bc             |
+| PIPELINE        |                                           | ../../../../Sha-Test/hash.cpp:56 in theta                 |
+| PIPELINE        | ii=1                                      | ../../../../Sha-Test/hash.cpp:84 in theta                 |
+| INLINE          |                                           | ../../../../Sha-Test/hash.cpp:95 in rho_pi                |
+| ARRAY_PARTITION | variable=keccakf_rotc type=complete dim=1 | ../../../../Sha-Test/hash.cpp:112 in rho_pi, keccakf_rotc |
+| ARRAY_PARTITION | variable=keccakf_piln type=complete dim=1 | ../../../../Sha-Test/hash.cpp:113 in rho_pi, keccakf_piln |
+| ARRAY_PARTITION | variable=bc type=complete dim=1           | ../../../../Sha-Test/hash.cpp:124 in rho_pi, bc           |
+| PIPELINE        |                                           | ../../../../Sha-Test/hash.cpp:142 in rho_pi               |
+| INLINE          |                                           | ../../../../Sha-Test/hash.cpp:157 in chi                  |
+| ARRAY_PARTITION | variable=bc type=complete dim=1           | ../../../../Sha-Test/hash.cpp:165 in chi, bc              |
+| PIPELINE        | ii=1                                      | ../../../../Sha-Test/hash.cpp:189 in chi                  |
+| PIPELINE        | ii=1                                      | ../../../../Sha-Test/hash.cpp:199 in chi                  |
+| INLINE          |                                           | ../../../../Sha-Test/hash.cpp:212 in iota                 |
+| ARRAY_PARTITION | variable=keccakf_rndc type=complete dim=1 | ../../../../Sha-Test/hash.cpp:230 in iota, keccakf_rndc   |
+| INLINE          | off                                       | ../../../../Sha-Test/hash.cpp:251 in keccakf_asconp12     |
+| INLINE          |                                           | ../../../../Sha-Test/hash.cpp:302 in hash_init            |
+| PIPELINE        | ii=1                                      | ../../../../Sha-Test/hash.cpp:308 in hash_init            |
+| INLINE          |                                           | ../../../../Sha-Test/hash.cpp:346 in hash_absorb          |
+| LOOP_TRIPCOUNT  | min=0 max=32                              | ../../../../Sha-Test/hash.cpp:361 in hash_absorb          |
+| INLINE          |                                           | ../../../../Sha-Test/hash.cpp:415 in hash_squeeze         |
+| PIPELINE        | ii=1                                      | ../../../../Sha-Test/hash.cpp:451 in hash_squeeze         |
+| LOOP_TRIPCOUNT  | min=4 max=8                               | ../../../../Sha-Test/hash.cpp:452 in hash_squeeze         |
+| INTERFACE       | mode=axis port=in                         | ../../../../Sha-Test/hash.cpp:477 in hash_top, in         |
+| INTERFACE       | mode=axis port=out                        | ../../../../Sha-Test/hash.cpp:478 in hash_top, out        |
+| INTERFACE       | mode=s_axilite port=inlen                 | ../../../../Sha-Test/hash.cpp:479 in hash_top, inlen      |
+| INTERFACE       | mode=s_axilite port=mdlen                 | ../../../../Sha-Test/hash.cpp:480 in hash_top, mdlen      |
+| INTERFACE       | mode=s_axilite port=return                | ../../../../Sha-Test/hash.cpp:481 in hash_top, return     |
++-----------------+-------------------------------------------+-----------------------------------------------------------+
+
+

@@ -3,6 +3,16 @@
 
 #include <stddef.h>
 #include <stdint.h>
+
+// [OPT] B-03: AXI4-Stream ports, same interface as Hybrid-Test (LOG-014).
+//       hls::stream + ap_axiu (TDATA/TKEEP/TSTRB/TLAST) are C++ Vitis HLS types.
+#include "hls_stream.h"
+#include "ap_axi_sdata.h"
+
+// One AXI4-Stream beat = one 64-bit state word: data (TDATA), keep/strb (byte valid), last (TLAST).
+// Byte order (as the AXI DMA packs memory): message byte 8*k + n in TDATA[8n+7 : 8n] of beat k,
+// i.e. little-endian, the same lane order as the state words (FIPS 202).
+typedef ap_axiu<64, 0, 0, 0> axis64_t;
  
 #ifndef ROTL64
 #define ROTL64(x, y) (((x) << (y)) | ((x) >> (64 - (y))))
@@ -42,15 +52,19 @@ typedef struct {
 // Compression function.
 void keccakf_asconp12 (uint64_t st[25]);
 
-// OpenSSL - like interfece
-int hash_init	(hash_ctx_t *c, int mdlen);	// mdlen = hash output in bytes
-int hash_update	(hash_ctx_t *c, const void *data, size_t len);
-int hash_final	(void *md, hash_ctx_t *c);    // digest goes to md
+// Sponge phases
+// [WAS] OpenSSL-like pointer API: hash_update(c, const void *data, len), hash_final(void *md, c)
+//       and the software wrapper hash(in, inlen, md, mdlen)
+// [OPT] B-03: stream-only datapath, no pointer API left (same structure as Hybrid-Test)
+int  hash_init   (hash_ctx_t *c, int mdlen);                                // mdlen = digest bytes
+int  hash_absorb (hash_ctx_t *c, hls::stream<axis64_t> &in, int inlen);     // 0 = OK, 1 = length mismatch
+void hash_squeeze(hash_ctx_t *c, hls::stream<axis64_t> &out);               // padding + digest beats
 
-// compute a sha3 hash (md) of given byte length from "in"
-void hash(const void *in, size_t inlen, void *md, int mdlen);
-
-//EDIT added the prototype of the hash_top function wrapper
-void hash_top(uint8_t in[256], int inlen, uint8_t md[64], int mdlen);
+// Top-level IP
+// [WAS] void hash_top(uint8_t in[256], int inlen, uint8_t md[64], int mdlen);
+//       array ports (ap_memory) wrapping hash()
+// [OPT] B-03: AXI4-Stream in/out (64-bit), AXI4-Lite inlen/mdlen + control (ap_ctrl_hs);
+//       no mode register (standalone variant); returns 0 = OK, 1 = TLAST did not match inlen
+int hash_top(hls::stream<axis64_t> &in, hls::stream<axis64_t> &out, int inlen, int mdlen);
  
 #endif

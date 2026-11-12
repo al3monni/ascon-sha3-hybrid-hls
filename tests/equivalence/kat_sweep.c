@@ -14,6 +14,11 @@
  * block-boundary case - required to validate the byte <-> word mapping of B-01.
  *
  * Build: -DVARIANT_HYBRID | -DVARIANT_SHA | -DVARIANT_ASCON  (see run.sh)
+ *
+ * [OPT] B-03: all three tops have AXI4-Stream ports (C++, hls::stream): the message is
+ *       packed into 64-bit beats as the AXI DMA does (LE, TKEEP/TLAST on the last beat),
+ *       the digest is unpacked from the output beats; ap_return and leftover beats are
+ *       checked. This file is then compiled as C++ (run.sh: g++ -x c++).
  */
 
 #include <stdio.h>
@@ -40,6 +45,46 @@ static const algo_t ALGOS[] = { {"ascon", 32, 0} };
 
 #define NALGOS ((int)(sizeof(ALGOS) / sizeof(ALGOS[0])))
 
+/* one transaction of the stream IP; returns nonzero on ap_return != 0 or protocol error */
+static int stream_hash(const uint8_t *msg, int len, uint8_t *md, int mdlen, uint8_t mode) {
+
+    hls::stream<axis64_t> in, out;
+    int k, n, nb, ret, errs = 0, nbeats = (len + 7) >> 3, nout = (mdlen + 7) >> 3;
+
+    for (k = 0; k < nbeats; k++) {
+        axis64_t beat;
+        uint64_t d = 0;
+        for (n = 0, nb = 0; n < 8; n++)
+            if (8 * k + n < len) { d |= ((uint64_t) msg[8 * k + n]) << (8 * n); nb++; }
+        beat.data = d;
+        beat.keep = (nb == 8) ? 0xFF : ((1 << nb) - 1);
+        beat.strb = beat.keep;
+        beat.last = (k == nbeats - 1);
+        in.write(beat);
+    }
+
+#if defined(VARIANT_HYBRID)
+    ret = hash_top(in, out, len, mdlen, mode);
+#elif defined(VARIANT_SHA)
+    (void) mode;                         /* standalone SHA-3: no mode register */
+    ret = hash_top(in, out, len, mdlen);
+#else
+    (void) mode;                         /* standalone Ascon: no mode / mdlen registers */
+    ret = hash_top(in, out, len);
+#endif
+
+    for (k = 0; k < nout; k++) {
+        if (out.empty()) return 1;
+        axis64_t beat = out.read();
+        uint64_t d = (uint64_t) beat.data;
+        nb = (k == nout - 1 && (mdlen & 7)) ? (mdlen & 7) : 8;
+        for (n = 0; n < nb; n++) md[8 * k + n] = (uint8_t) (d >> (8 * n));
+        if ((int) beat.last != (k == nout - 1)) errs++;
+    }
+
+    return ret != 0 || errs != 0 || !in.empty() || !out.empty();
+}
+
 int main(void) {
 
     uint8_t msg[MAX_LEN], md[64];
@@ -51,11 +96,8 @@ int main(void) {
     for (a = 0; a < NALGOS; a++) {
         for (len = 0; len <= MAX_LEN; len++) {
 
-#if defined(VARIANT_HYBRID)
-            hash_top(msg, len, md, ALGOS[a].mdlen, ALGOS[a].mode);
-#else
-            hash_top(msg, len, md, ALGOS[a].mdlen);
-#endif
+            if (stream_hash(msg, len, md, ALGOS[a].mdlen, ALGOS[a].mode) != 0)
+                printf("PROTOCOL-ERROR ");   /* makes the line differ from golden.txt */
             printf("%s %d ", ALGOS[a].name, len);
             for (i = 0; i < ALGOS[a].mdlen; i++) printf("%02X", md[i]);
             printf("\n");
