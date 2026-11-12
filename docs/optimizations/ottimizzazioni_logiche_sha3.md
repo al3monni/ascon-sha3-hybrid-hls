@@ -2,21 +2,30 @@
 
 
 
-#### 1\. Eliminare la union su st
+#### Ottimizzazioni applicate
 
 
 
-Lo stato st è una union tra una vista a byte (b\[200]) e una vista a word (q\[25]).
+* **LOG-001** — Ristrutturazione per HLS: permutazione scomposta in funzioni foglia (theta, rho\_pi, chi, iota), label su loop e call-site, top sintetizzabile hash\_top.
+* **LOG-002** — Variante standalone: solo il ramo SHA-3 del codice ibrido, API senza mode.
+* **LOG-003** — Pass pragma-only: INLINE off su keccakf\_asconp12 (una sola istanza), INLINE su fasi della spugna e funzioni foglia, ARRAY\_PARTITION complete su bc\[5] e tabelle di costanti, PIPELINE II=1 dove l'accesso allo stato lo consente, LOOP\_TRIPCOUNT.
+* **LOG-006** — Esplorazioni annotate nel codice (\[EXPLORED]): PIPELINE solo sui loop interni invece che su top\_chi (4.2k vs 5.0k LUT, area-first); PIPELINE II=1 su rounds\_loop scartata (stime HLS: 53 cicli/permutazione ma LUT 3.1k → 8.9k; da rivalutare: B-08).
+* **LOG-013 (B-01)** — Union rimossa: stato uint64\_t st\[25], vista a byte via shift/mask (st\_xor\_byte); partizionamento automatico di HLS disattivato. Risultato (post-route + cosim): BRAM 10 → 0, LUT −5%, f post-route +16%, throughput +24% (SHA3-256).
+* **LOG-014 (B-03)** — Interfaccia AXI4-Stream 64 bit (in/out) + AXI4-Lite (inlen, mdlen, ap\_return): absorb e squeeze a word, controllo TLAST/inlen, hash() e API a puntatori rimossi, sorgenti in C++. Risultato (post-route + cosim): throughput +16% / +10% (SHA3-256 / SHA3-512), LUT +20%.
 
 
 
-Le due viste condividono la stessa memoria, e per HLS questo significa una sola RAM a 2 porte.
+
+
+//=======================================================================================================================
 
 
 
-Questo condiziona pesantemente l'II raggiungibile dai cicli interni quando ci sono più di due letture/scritture per ciclo.
+#### 1\. Partizionamento esplicito dello stato
 
 
+
+Con la union rimossa (B-01) lo stato uint64\_t st\[25] è partizionabile; il partizionamento automatico è disattivato, quindi va fatto con pragma esplicite.
 
 SHA-3 usa tutte le 25 word di stato a ogni round (theta e chi leggono e scrivono tutte e 25, rho\_pi 24).
 
@@ -24,26 +33,8 @@ Questo è il caso **più penalizzato** dal limite dalle porte della ram.
 
 
 
-Indirizzando esclusivamente lo stato per word (uint64\_t q\[25]) permetterebbe di poterlo partizionare come:
-
-
-
-* \#pragma HLS ARRAY\\\_PARTITION variable=q type=cyclic factor=5 dim=1 --> mappando le colonne su array separati
-* \#pragma HLS ARRAY\\\_PARTITION variable=q type=ccomplete dim=1 --> mappando tutti i bit su registri separati (parallelismo totale) *\[+ area]*
-
-
-
-
-
-Attraverso maschere/shift sarebbe comunque possibile accedervi a byte.
-
-
-
-Questo impatterebbe l'absorbing loop in hash\_update() e il padding e squeezing in hash\_final().
-
-
-
-* c->st.b\\\[j] ^= byte --> diventerebbe --> c->st.q\\\[j>>3] ^= ((uint64\\\_t)byte) << (8 \\\* (j \\\& 7))
+* \#pragma HLS ARRAY\\\_PARTITION variable=H.st type=cyclic factor=5 dim=1 --> mappando le colonne su array separati
+* \#pragma HLS ARRAY\\\_PARTITION variable=H.st type=complete dim=1 --> mappando tutte le word su registri separati (parallelismo totale) *\[+ area]*
 
 
 
@@ -70,30 +61,3 @@ In questo modo il loop diventa pipelinabile. *\[+ area + troughput]*
 
 
 Su SHA-3 questo loop pesa più che altrove (24 iterazioni per round × 24 round).
-
-
-
-
-
-//=======================================================================================================================
-
-
-
-#### 3\. AXI4-Stream via hls::stream
-
-
-
-L'interfaccia di *uint8\_t in\[256]* e *uint8\_t md\[64]* attraverso hls::stream< ap\_axiu<8,0,0,0> > con TLAST
-
-
-
-L'interfaccia di *int mdlen*, *uint8\_t mode*, attraverso AXI4-Lite eliminando *int inlen*
-
-
-
-Necessario cambiare logica su hash\_update e hash\_final.
-
-
-
-
-

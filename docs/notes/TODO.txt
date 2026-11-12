@@ -1,6 +1,6 @@
 PRIORITÀ
 
-- Wrapping Acceleratore Ibrido + Test FPGA Kria
+- Test FPGA Kria: integrazione dell'IP AXI con AXI DMA
 [https://github.com/mdc-suite/AXI-based-driver-applications/tree/main]
 
 
@@ -15,8 +15,6 @@ WRITTEN THEORY
 
 PRAGMA
 
-- Trovare una configurazione ottimale delle pragma
-- Peparare Report sulle pragma usate
 - Organizzare prestazioni in base alle configurazioni
 
 
