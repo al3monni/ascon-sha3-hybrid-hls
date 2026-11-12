@@ -28,7 +28,7 @@ Storico delle modifiche al codice e alla configurazione, dalla base di partenza 
 | [LOG-011](#log-011--testbench-in-modalità-throughput) | 2026-11-05 | Testbench in modalità throughput (`-argv <algo>`) | Hybrid, SHA-3, Ascon |
 | [LOG-012](#log-012--ristrutturazione-repo-versioni-di-design-e-flusso-di-riferimento) | 2026-11-05 | Ristrutturazione repo: versioni di design e flusso di riferimento | — |
 | [LOG-013](#log-013--b-01-rimozione-della-union-sullo-stato) | 2026-11-05 | B-01: rimozione della `union` sullo stato (branch `b01-remove-union`) | Hybrid, SHA-3, Ascon |
-| [LOG-014](#log-014--b-03-interfaccia-axi4-stream--axi4-lite) | 2026-11-06 | B-03: interfaccia AXI4-Stream + AXI4-Lite (branch `b03-axi-stream`) | Hybrid (SHA-3, Ascon: da fare) |
+| [LOG-014](#log-014--b-03-interfaccia-axi4-stream--axi4-lite) | 2026-11-06 | B-03: interfaccia AXI4-Stream + AXI4-Lite (branch `b03-axi-stream`) | Hybrid, SHA-3, Ascon |
 
 ---
 
@@ -517,18 +517,69 @@ AXIS `in_r` / `out_r` (le porte `in`/`out` vengono rinominate da HLS): TDATA 64,
 Cosim `robust`: Pass (3 transazioni: TLAST in anticipo, TLAST in ritardo, lunghezza esatta).
 
 **Osservazioni**
-- **Absorb.** Passa da circa 3 cicli per byte a circa 3 cicli per word: la differenza tra SHA3-256 (17 word) e SHA3-512 (9 word) è 24 cicli per 8 word. Il costo per blocco ora è quasi tutto nella permutazione: circa 3240 cicli per Keccak-f e circa 440 per Ascon-p12 sul datapath condiviso, con i loop ancora rolled.
+- **Absorb.** Passa da circa 3 cicli per byte a circa 3 cicli per word: la differenza tra SHA3-256 (17 word) e SHA3-512 (9 word) è 24 cicli per 8 word. Il costo per blocco ora è quasi tutto nella permutazione: circa 3240 cicli per Keccak-f e circa 445 per Ascon-p12 sul datapath condiviso, con i loop ancora rolled.
 - **Area.** LUT +15% e FF +24% rispetto a b01. Comprendono gli adattatori AXI4-Lite (`s_axi_control`) e i register slice AXIS (`both` su due stream da 81 bit). Il dettaglio per modulo è da leggere nel report gerarchico di Vivado.
 - **Frequenza.** f post-route da 150.3 a 187.8 MHz (+25%). Ipotesi da verificare sul percorso critico: la rimozione dei percorsi a byte di absorb e squeeze.
 - **Throughput.** +39% (SHA3-256), +32% (SHA3-512), +31% (Ascon). TP/kLUT +20%, +15%, +14%.
-- **Confronto con le standalone.** Va fatto solo dopo aver applicato B-03 anche a SHA-3 e Ascon, a parità di interfaccia.
+- **Confronto con le standalone.** Vedi il riepilogo sotto, a parità di interfaccia.
 
 **Verifica**
 - g++ con gli header di Vitis 2025.1.1: KAT, robust, 5 configurazioni di throughput, equivalenza su 771 vettori via stream, ASan/UBSan puliti. Controllo negativo: un TLAST sbagliato viene rilevato.
 - HLS: csim PASS (KAT + robust), cosim PASS (KAT, 3 run di throughput, robust), timing chiuso.
 
+### SHA-3
+
+**Modifiche** (commit strutturale `ee186f8`: rinomina in `.cpp`, fine riga LF, cfg della GUI; codice in `5aef631`)
+- Stessa trasformazione dell'Hybrid, senza `mode`: `int hash_top(in, out, inlen, mdlen)`. AXI4-Lite: `ap_return` (`0x10`), `inlen` (`0x18`), `mdlen` (`0x20`).
+- Testbench: stessi helper di stream, test `robust`, digest attesi da `golden.txt`.
+
+### Ascon
+
+**Modifiche** (commit strutturale: rinomina in `.cpp`, fine riga LF, cfg della GUI; codice in `1aa1b4d`)
+- `int hash_top(in, out, inlen)`. Niente `mode` né `mdlen`: il digest di Ascon-Hash256 è sempre di 32 byte. **[WAS]** `mdlen` nel contesto e in `hash_init`, impostato ma mai letto → **[OPT]** rimosso. AXI4-Lite: `ap_return` (`0x10`), `inlen` (`0x18`).
+- **Absorb.** Specializzato sulla rate di 8 byte: un beat corrisponde a un blocco. Ogni beat pieno viene XORato in `st[0]` e seguito dalla permutazione; l'ultimo beat parziale è mascherato in base a `inlen`.
+- **Squeeze.** 4 beat di `st[0]`, con le 3 chiamate alla permutazione invariate. `st0_get_byte` è rimosso.
+- `tests/equivalence/kat_sweep.c`: tutte e tre le varianti passano per gli stream.
+
+### Riepilogo B-03 (@ 10 ns; area e frequenza post-route Vivado OOC, cicli dalla cosim di throughput)
+
+| Variante | LUT | FF | BRAM | f [MHz] | Algoritmo | L(len0) / L(len1) | k | cicli/blocco | TP [Mbps] | TP/kLUT |
+|---|---:|---:|---:|---:|---|---|---:|---:|---:|---:|
+| Hybrid | 3665 | 3244 | 0 | 187.8 | SHA3-256 | 3283 / 6576 | 1 | 3293 | 62.05 | 16.93 |
+| | | | | | SHA3-512 | 3287 / 13094 | 3 | 3269 | 33.09 | 9.03 |
+| | | | | | Ascon | 2275 / 16643 | 32 | 449 | 26.77 | 7.30 |
+| SHA-3 | 2527 | 2613 | 0 | 200.0 | SHA3-256 | 3258 / 6527 | 1 | 3269 | 66.56 | 26.34 |
+| | | | | | SHA3-512 | 3262 / 12997 | 3 | 3245 | 35.50 | 14.05 |
+| Ascon | 1103 | 1270 | 4 | 257.7 | Ascon | 130 / 898 | 32 | 24 | 687.20 | 623.03 |
+
+Rispetto a b01: SHA-3 TP +16% / +10% (SHA3-256 / SHA3-512) e TP/kLUT −4% / −8%; Ascon da 45 a 24 cicli/blocco, TP da 426.8 a 687.2 Mbps (+61%) e TP/kLUT +43%. Cosim `robust`: Pass in tutte e tre le varianti.
+
+**Area per modulo** (report gerarchico post-route, LUT / FF)
+
+| Modulo | Hybrid | SHA-3 | Ascon |
+|---|---|---|---|
+| permutazione `keccakf_asconp12` | 2233 / 1823 | 1540 / 1288 | 693 / 656 |
+| stato `H_st` | 764 / 320 | 418 / 320 | 93 / 0 (+ 4 BRAM) |
+| `s_axi_control` (AXI4-Lite) | 163 / 126 | 184 / 118 | 108 / 85 |
+| register slice AXIS (dati in + out) | 233 / 266 | 151 / 266 | 153 / 266 |
+| **totale** | 3665 / 3244 | 2527 / 2613 | 1103 / 1270 |
+
+**Osservazioni**
+- **Costo dell'interfaccia.** `s_axi_control` più i register slice valgono circa 260–400 LUT e 350–390 FF per variante: il 24% dei LUT di Ascon, l'11–13% di Hybrid e SHA-3.
+- **Le 4 BRAM di Ascon** appartengono a `H_st` (stato di 5 word × 64 bit, `ram_t2p`): Vivado ha mappato in BRAM una memoria che la csynth stimava 0 BRAM. Il partizionamento completo dello stato (5 registri) le eliminerebbe.
+- **Permutazione dell'Hybrid.** Usa 2233 LUT, esattamente la somma di quelle delle due standalone (1540 + 693), e 121 FF in meno. In questa fase, con i loop rolled e lo stato in memoria, la condivisione del datapath non riduce i LUT della permutazione. È un dato puntuale, da ricontrollare dopo l'ottimizzazione del datapath.
+- **Hybrid contro due standalone.**
+  - Area: 3665 LUT contro 3630 della somma (+1%); FF 3244 contro 3883 (−16%); 0 BRAM contro 4.
+  - SHA3-256: il throughput dell'Hybrid è il 93% di quello della standalone.
+  - Ascon: l'Hybrid fa 449 cicli per blocco, la standalone 24. Nella standalone `rounds_loop` è in pipeline con II=1 sullo stato a 5 word; nell'Hybrid Ascon passa per il datapath generico (stato a 25 word in memoria, loop rolled dimensionati per Keccak).
+  - Allo stato attuale l'Hybrid non è giustificato in termini di throughput/area: per Ascon, TP/kLUT 7.3 contro 189 del sistema formato dalle due standalone. Il collo di bottiglia è il ramo Ascon del datapath condiviso: è il primo bersaglio delle ottimizzazioni (partizionamento esplicito dello stato, ristrutturazione dei loop).
+
+**Verifica**
+- g++: KAT, `robust`, throughput ed equivalenza (771 / 514 / 257 vettori) via stream; ASan/UBSan puliti; controlli negativi rilevati.
+- HLS: csim PASS, cosim PASS (KAT, throughput, `robust`), timing chiuso in tutte e tre le varianti.
+
 **Note**
-- Il benchmark software (`benchmarks/software-latency`) non compila più per l'Hybrid (`hash.c`, `hash()`): va adattato a fine lavoro.
+- Il benchmark software (`benchmarks/software-latency`) non compila più (`hash.c`, `hash()`): va adattato a fine lavoro.
 
 ---
 
@@ -540,7 +591,7 @@ Attività pianificate, in ordine di priorità. Quando un'attività parte, riceve
 |---|---|---|---|---|
 | B-01 | **Rimuovere la `union` su `st`** (LOG-013): stato solo `uint64_t q[25]` (Ascon: `q[5]`), viste a byte ricostruite con shift/mask. Sblocca `ARRAY_PARTITION` sullo stato e II=1 nei loop limitati dalle porte | tutte | `docs/optimizations/*` §1 | fatto (branch `b01-remove-union`) |
 | B-02 | Rompere la dipendenza seriale in `rho_pi()` | Hybrid, SHA-3 | `ottimizzazioni_logiche_{hybrid,sha3}.md` §2 | da fare |
-| B-03 | **Wrapper AXI4-Stream** (LOG-014: Hybrid fatto; scelto AXI4-Lite + `inlen`/TLAST) (`hls::stream` + `ap_axiu`, TLAST sull'ultimo beat) per l'integrazione con AXI DMA. Da decidere: controllo via AXI-Lite oppure header in-band + `ap_ctrl_none` (32 bit, compatibile con il driver `uniss_dma` di [mdc-suite/AXI-based-driver-applications](https://github.com/mdc-suite/AXI-based-driver-applications)). Bozza AXI-Lite a 8 bit già verificata in C (KAT + TLAST) | Hybrid → poi tutte | `docs/optimizations/*` §3/§4 | in corso |
+| B-03 | **Wrapper AXI4-Stream** (LOG-014: fatto nelle tre varianti; scelto AXI4-Lite + `inlen`/TLAST) (`hls::stream` + `ap_axiu`, TLAST sull'ultimo beat) per l'integrazione con AXI DMA. Da decidere: controllo via AXI-Lite oppure header in-band + `ap_ctrl_none` (32 bit, compatibile con il driver `uniss_dma` di [mdc-suite/AXI-based-driver-applications](https://github.com/mdc-suite/AXI-based-driver-applications)). Bozza AXI-Lite a 8 bit già verificata in C (KAT + TLAST) | Hybrid → poi tutte | `docs/optimizations/*` §3/§4 | fatto (branch `b03-axi-stream`) |
 | B-04 | Block design Vivado: Zynq MPSoC + AXI DMA + IP, bitstream/`.xsa`, applicazione di test sulla KV260 | Hybrid → poi tutte | — | da fare |
 | B-05 | Dataset di tesi: area stimata vs reale, II di sintesi vs II osservato in cosim, throughput/area per algoritmo | tutte | — | da fare |
 | B-06 | Pulizia: rimuovere `keccakf_rndc` non usato in `keccakf_asconp12()` (Hybrid) e le variabili inutilizzate (`i`, `j`) | Hybrid | LOG-001 | da fare |
