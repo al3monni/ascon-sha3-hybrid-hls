@@ -19,6 +19,8 @@
  *       packed into 64-bit beats as the AXI DMA does (LE, TKEEP/TLAST on the last beat),
  *       the digest is unpacked from the output beats; ap_return and leftover beats are
  *       checked. This file is then compiled as C++ (run.sh: g++ -x c++).
+ * [OPT] B-04: -DHASH_INBAND (run.sh: CTRL=ib) drives the in-band version of the tops:
+ *       header beat (inlen | mdlen | mode) before the message, status beat after the digest.
  */
 
 #include <stdio.h>
@@ -51,6 +53,18 @@ static int stream_hash(const uint8_t *msg, int len, uint8_t *md, int mdlen, uint
     hls::stream<axis64_t> in, out;
     int k, n, nb, ret, errs = 0, nbeats = (len + 7) >> 3, nout = (mdlen + 7) >> 3;
 
+#ifdef HASH_INBAND
+    /* [OPT] B-04: header beat, layout in hash.h (TLAST on it only for the empty message) */
+    {
+        axis64_t hdr;
+        hdr.data = ((uint64_t) (uint32_t) len) | (((uint64_t) mdlen) << 32) | (((uint64_t) mode) << 48);
+        hdr.keep = 0xFF;
+        hdr.strb = 0xFF;
+        hdr.last = (nbeats == 0);
+        in.write(hdr);
+    }
+#endif
+
     for (k = 0; k < nbeats; k++) {
         axis64_t beat;
         uint64_t d = 0;
@@ -63,7 +77,10 @@ static int stream_hash(const uint8_t *msg, int len, uint8_t *md, int mdlen, uint
         in.write(beat);
     }
 
-#if defined(VARIANT_HYBRID)
+#if defined(HASH_INBAND)
+    hash_top(in, out);                   /* [OPT] B-04: ret = status beat, read below */
+    ret = 0;
+#elif defined(VARIANT_HYBRID)
     ret = hash_top(in, out, len, mdlen, mode);
 #elif defined(VARIANT_SHA)
     (void) mode;                         /* standalone SHA-3: no mode register */
@@ -79,8 +96,18 @@ static int stream_hash(const uint8_t *msg, int len, uint8_t *md, int mdlen, uint
         uint64_t d = (uint64_t) beat.data;
         nb = (k == nout - 1 && (mdlen & 7)) ? (mdlen & 7) : 8;
         for (n = 0; n < nb; n++) md[8 * k + n] = (uint8_t) (d >> (8 * n));
-        if ((int) beat.last != (k == nout - 1)) errs++;
+        if ((int) beat.last != (HASH_DIGEST_TLAST && k == nout - 1)) errs++;   /* [OPT] B-04 */
     }
+
+#ifdef HASH_INBAND
+    /* [OPT] B-04: status beat with TLAST */
+    if (out.empty()) return 1;
+    {
+        axis64_t s = out.read();
+        ret = (int) (uint64_t) s.data;
+        if ((int) s.last != 1) errs++;
+    }
+#endif
 
     return ret != 0 || errs != 0 || !in.empty() || !out.empty();
 }

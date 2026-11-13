@@ -1,0 +1,24 @@
+design:        b04
+variant:       Sha-Test
+ctrl:          ib
+ip_vlnv:       unica.it:hls:hash_sha3_ib:1.0
+ip_source:     C:/Users/monni/Desktop/Vitis-HLS_Components/build/hls/b04/Sha-Test-ib/T_10/hls/impl/ip
+board_part:    xilinx.com:kv260_som:part0:1.4
+pl_clk0_MHz:   100
+wns_ns:        5.144
+whs_ns:        0.010
+timing_met:    yes
+ip_LUT:        2615
+ip_FF:         2439
+ip_BRAM:       0.0
+ip_DSP:        0
+total_LUT:     7637
+total_FF:      10814
+total_BRAM:    3.0
+total_DSP:     0
+bitstream:     hw/kv260_sha3_ib.bit
+bit_bin:       hw/kv260_sha3_ib.bit.bin
+xsa:           hw/kv260_sha3_ib.xsa
+address_map:
+  SEG_axi_dma_0_Reg                        offset 0x00A0000000  range 0x0000010000
+  SEG_axi_dma_1_Reg                        offset 0x00A0010000  range 0x0000010000

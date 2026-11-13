@@ -15,6 +15,31 @@
 // with an 8-byte rate, one beat is exactly one Ascon block.
 typedef ap_axiu<64, 0, 0, 0> axis64_t;
 
+// [OPT] B-04: two control versions of the same core, selected at compile time
+//       (Tcl flow: CTRL=lite | ib, see scripts/hls/run_point.tcl), as in Hybrid-Test:
+//
+//   default (lite)  b03 interface: inlen and block control (ap_ctrl_hs) on AXI4-Lite,
+//                   ap_return = status (0 = OK, 1 = TLAST did not match inlen)
+//   HASH_INBAND (ib) no AXI4-Lite (uniss_dma driver of the supervisors): ap_ctrl_none,
+//                   parameters in the FIRST 64-bit beat of `in` (header), status in ONE extra
+//                   beat after the digest (TLAST moves from the last digest beat to it)
+//
+// Header beat (TDATA, little-endian in memory = bytes 0..7 of the MM2S buffer), common to the
+// three variants so that one driver serves all of them:
+//   [31:0] inlen (message bytes) | [47:32] mdlen (digest bytes) | [55:48] mode | [63:56] 0
+//   used here: inlen only (mdlen / mode ignored: fixed 32-byte Ascon-Hash256)
+//   TLAST on the header only when no message beat follows (inlen = 0).
+// Status beat (TDATA): 0 = OK, 1 = TLAST did not match inlen (same meaning as ap_return).
+#define HDR_INLEN(h)  ((int)     (uint32_t)  ((h)        & 0xFFFFFFFFULL))
+#define HDR_MDLEN(h)  ((int)     (uint32_t) (((h) >> 32) & 0xFFFFULL))
+#define HDR_MODE(h)   ((uint8_t) (uint32_t) (((h) >> 48) & 0xFFULL))
+
+#ifdef HASH_INBAND
+#define HASH_DIGEST_TLAST 0     // ib: TLAST on the status beat
+#else
+#define HASH_DIGEST_TLAST 1     // lite: TLAST on the last digest beat (b03)
+#endif
+
 // Ascon-Hash256 digest length (fixed by SP 800-232)
 #define ASCON_HASH_BYTES 32
 
@@ -62,7 +87,10 @@ void keccakf_asconp12 (uint64_t st[5]);       // [WAS] uint64_t st[25]
 //       hash_final(void *md, c) and the software wrapper hash(in, inlen, md, mdlen)
 // [OPT] B-03: stream-only datapath, no pointer API left (same structure as Hybrid-Test)
 int  hash_init   (hash_ctx_t *c);                                           // IV + initial permutation
-int  hash_absorb (hash_ctx_t *c, hls::stream<axis64_t> &in, int inlen);     // 0 = OK, 1 = length mismatch
+// [WAS] B-03: hash_absorb(c, in, inlen)
+// [OPT] B-04: + ended = the stream has no beat left to read when the absorb starts
+//       (lite: empty message, no DMA transfer; ib: TLAST already seen on the header beat)
+int  hash_absorb (hash_ctx_t *c, hls::stream<axis64_t> &in, int inlen, bool ended); // 0 = OK, 1 = length mismatch
 void hash_squeeze(hash_ctx_t *c, hls::stream<axis64_t> &out);               // padding + 4 digest beats
 
 // Top-level IP
@@ -71,6 +99,11 @@ void hash_squeeze(hash_ctx_t *c, hls::stream<axis64_t> &out);               // p
 // [OPT] B-03: AXI4-Stream in/out (64-bit), AXI4-Lite inlen + control (ap_ctrl_hs);
 //       no mode / mdlen registers (standalone, fixed 32-byte digest);
 //       returns 0 = OK, 1 = TLAST did not match inlen
-int hash_top(hls::stream<axis64_t> &in, hls::stream<axis64_t> &out, int inlen);
+// [OPT] B-04: HASH_INBAND -> streams only (header beat in, digest + status beat out)
+#ifdef HASH_INBAND
+void hash_top(hls::stream<axis64_t> &in, hls::stream<axis64_t> &out);
+#else
+int  hash_top(hls::stream<axis64_t> &in, hls::stream<axis64_t> &out, int inlen);
+#endif
 
 #endif

@@ -453,8 +453,8 @@ int hash_init(hash_ctx_t *c, int mdlen, uint8_t mode) {
     return 1;
 }
 
-int hash_absorb(hash_ctx_t *c, hls::stream<axis64_t> &in, int inlen, uint8_t mode) {
-    
+int hash_absorb(hash_ctx_t *c, hls::stream<axis64_t> &in, int inlen, uint8_t mode, bool ended) {
+
     /*
         Absorbs the message, read from the AXI4-Stream `in`, into the state.
 
@@ -470,6 +470,13 @@ int hash_absorb(hash_ctx_t *c, hls::stream<axis64_t> &in, int inlen, uint8_t mod
           - TLAST earlier than expected -> the loop stops at TLAST
         both cases return 1 (length mismatch, read by software from ap_return).
         inlen = 0 (empty message): no beat is read, software does not start the DMA.
+
+        [OPT] B-04: `ended` = no beat left in the stream when the absorb starts. It replaces
+              the test on the message length, so that the same loop serves both versions:
+                lite: ended = (nbeats == 0)  -> identical to b03
+                ib:   ended = TLAST of the header beat; inlen comes from the header, so a
+                      header with TLAST and inlen > 0 (early TLAST) or without TLAST and
+                      inlen = 0 (late TLAST) is a length mismatch, still drained up to TLAST
     */
 
     // inlining hash_absorb into the top module allows
@@ -484,7 +491,9 @@ int hash_absorb(hash_ctx_t *c, hls::stream<axis64_t> &in, int inlen, uint8_t mod
     int rw     = c->rsiz >> 3;          // rate in words (rsiz is a multiple of 8)
     int w      = 0;                     // word index inside the current block
     int b      = 0;                     // beats read so far
-    bool last  = (nbeats == 0);         // empty message: nothing to read
+    // [WAS] bool last = (nbeats == 0);  // empty message: nothing to read
+    // [OPT] B-04: decided by the caller (see above); lite passes (nbeats == 0)
+    bool last  = ended;
 
     absorbing_loop: while (!last) {
 
@@ -598,7 +607,7 @@ void hash_squeeze(hash_ctx_t *c, hls::stream<axis64_t> &out, uint8_t mode) {
             beat.data = c->st[i];
             beat.keep = (i == nout - 1 && orem != 0) ? (ap_uint<8>) ((1 << orem) - 1) : (ap_uint<8>) 0xFF;
             beat.strb = beat.keep;
-            beat.last = (i == nout - 1);
+            beat.last = (i == nout - 1) && HASH_DIGEST_TLAST;   // [OPT] B-04: ib -> TLAST on the status beat
             out.write(beat);
         }
 
@@ -621,9 +630,63 @@ void hash_squeeze(hash_ctx_t *c, hls::stream<axis64_t> &out, uint8_t mode) {
 
         final_perm_3: keccakf_asconp12(c->st, mode);
 
-        beat.data = c->st[0]; beat.last = 1; out.write(beat);      // squeeze 4, TLAST
+        // [WAS] beat.last = 1 (squeeze 4, TLAST)
+        // [OPT] B-04: TLAST here only in the lite version, ib puts it on the status beat
+        beat.data = c->st[0]; beat.last = HASH_DIGEST_TLAST; out.write(beat);      // squeeze 4
     }
 }
+
+#ifdef HASH_INBAND
+
+void hash_top(hls::stream<axis64_t> &in, hls::stream<axis64_t> &out) {
+
+    /*
+        [OPT] B-04: in-band version of the IP (CTRL=ib), no AXI4-Lite.
+
+        Suggested by the supervisors: the uniss_dma driver (mdc-suite) only drives the AXI DMA,
+        so the IP must be configured and started through the data streams alone, like VPA_IP.
+          - ap_ctrl_none: free-running, the IP restarts by itself and waits on the header beat
+            (no ap_start / ap_done; in the block design only ap_clk, ap_rst_n and the 2 streams)
+          - header = first beat of `in`: inlen | mdlen | mode (layout in hash.h, HDR_* macros)
+          - status = one extra beat after the digest, with TLAST (0 = OK, 1 = length mismatch);
+            the S2MM transfer is therefore digest bytes + 8
+        The sponge (init / absorb / squeeze) is the same code as the lite version.
+
+        Software sequence: MM2S buffer = header (8 bytes) + message -> start S2MM (digest + 8)
+        and MM2S (8 + inlen bytes) -> wait S2MM idle -> status = last 8 bytes.
+        Co-simulation: allowed for ap_ctrl_none because all ports are hls::stream (UG1399).
+    */
+
+    #pragma HLS INTERFACE mode=axis         port=in
+    #pragma HLS INTERFACE mode=axis         port=out
+    #pragma HLS INTERFACE mode=ap_ctrl_none port=return
+
+    hash_ctx_t H;
+
+    // header beat: parameters of the message that follows
+    axis64_t hdr = in.read();
+    uint64_t h   = (uint64_t) hdr.data;
+
+    int     inlen = HDR_INLEN(h);
+    int     mdlen = HDR_MDLEN(h);
+    uint8_t mode  = HDR_MODE(h);
+
+    int err;
+
+    hash_init   (&H, mdlen, mode);
+    err = hash_absorb (&H, in, inlen, mode, hdr.last);   // TLAST on the header: no message beat
+    hash_squeeze(&H, out, mode);                        // digest beats, no TLAST
+
+    // status beat: replaces ap_return, closes the S2MM transfer
+    axis64_t st;
+    st.data = (uint64_t) err;
+    st.keep = 0xFF;
+    st.strb = 0xFF;
+    st.last = 1;
+    out.write(st);
+}
+
+#else   // lite (b03 interface)
 
 int hash_top(hls::stream<axis64_t> &in, hls::stream<axis64_t> &out, int inlen, int mdlen, uint8_t mode) {
 
@@ -663,8 +726,12 @@ int hash_top(hls::stream<axis64_t> &in, hls::stream<axis64_t> &out, int inlen, i
     int err;
 
     hash_init   (&H, mdlen, mode);
-    err = hash_absorb (&H, in, inlen, mode);
+    // [WAS] err = hash_absorb (&H, in, inlen, mode);
+    // [OPT] B-04: ended = (nbeats == 0), the test that b03 did inside hash_absorb
+    err = hash_absorb (&H, in, inlen, mode, ((inlen + 7) >> 3) == 0);
     hash_squeeze(&H, out, mode);
 
     return err;
 }
+
+#endif  // HASH_INBAND

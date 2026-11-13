@@ -68,14 +68,27 @@ ascon-sha3-hybrid-hls/            # = workspace Vitis Unified (Vitis-HLS_Compone
 │
 ├── scripts/hls/                  # flusso HLS di riferimento (Tcl + .bat per Windows)
 │   ├── design.txt                #   etichetta della versione di design (baseline, b01, …)
-│   ├── common.tcl                #   impostazioni condivise (ROOT, DESIGN)
+│   ├── common.tcl                #   impostazioni condivise (ROOT, DESIGN, CTRL, nomi/VLNV degli IP)
 │   ├── run_point.tcl  run_all.bat  sweep_hls.bat   # csim → csynth → cosim → impl OOC, sweep del clock
 │   ├── run_cosim.tcl  cosim_all.bat                # cosim di throughput (un run per algoritmo)
+│   ├── run_b04.bat               #   B-04: tre varianti per una versione (lite | ib) + collect
 │   └── collect.tcl               #   archivia i report e scrive summary.csv
+├── scripts/vivado/               # B-04: flusso Vivado 2025.1.1 per la KV260
+│   ├── build_bd.tcl              #   progetto → block design → bitstream → .xsa → report → pl.dtsi
+│   ├── ps_kv260_preset.tcl       #   preset del PS KV260 (fallback senza board files)
+│   ├── run_b04.bat               #   tre varianti per una versione (lite | ib)
+│   └── collect_vivado.tcl        #   results/vivado/<design>/summary.csv
+├── scripts/run_b04_all.bat  launch_b04.tcl  clean_env.bat   # flusso completo / avvio in background
 ├── results/hls/<design>/         # risultati versionati, uno per versione di design
 │   ├── summary.csv               #   una riga per variante × clock target
-│   └── <variante>/T_<ns>/        #   csynth, cosim (KAT + cosim/<algo>.rpt), export_syn/impl, cfg
-├── build/hls/<design>/           # build Tcl (non versionato, rigenerabile)
+│   └── <variante>[-ib]/T_<ns>/   #   csynth, cosim (KAT + cosim/<algo>.rpt), export_syn/impl, cfg
+├── results/vivado/<design>/      # B-04: risultati di sistema (KV260), uno per variante × versione
+│   ├── summary.csv
+│   └── <variante>[-ib]/          #   summary.txt, report post-route, pl.dtsi, hash_bd.tcl
+│       └── hw/                   #   .bit, .bit.bin, .bin, .xsa (non versionati, rigenerabili)
+├── results/board/<design>/       # B-04: log delle prove su scheda (KV260)
+├── sw/kv260/                     # B-04: app di test su scheda (driver uniss_dma), script di caricamento + README
+├── build/hls/<design>/  build/vivado/<design>/   # build Tcl e progetti Vivado (non versionati)
 │
 ├── benchmarks/
 │   └── software-latency/         # benchmark di latenza SW hybrid vs standalone (x86_64 e aarch64)
@@ -100,7 +113,7 @@ ascon-sha3-hybrid-hls/            # = workspace Vitis Unified (Vitis-HLS_Compone
     └── crypto-agility/           # NIST CSWP 39, sintesi e slide sulla crypto-agility
 ```
 
-Le cartelle `vivado/` (block design KV260) e `sw/` (applicazioni di test sulla board) verranno aggiunte con l'integrazione di sistema.
+L'integrazione di sistema (B-04, LOG-015) è in `scripts/vivado/`, `results/vivado/` e `sw/kv260/`.
 
 ## Le tre varianti e le due basi di codice
 
@@ -138,7 +151,8 @@ typedef struct { uint64_t st[25]; int pt, rsiz, mdlen, mode; } hash_ctx_t;
 
 void keccakf_asconp12(uint64_t st[25], uint8_t mode);                               // permutazione condivisa
 int  hash_init   (hash_ctx_t *c, int mdlen, uint8_t mode);
-int  hash_absorb (hash_ctx_t *c, hls::stream<axis64_t> &in, int inlen, uint8_t mode);  // 1 = TLAST != inlen
+int  hash_absorb (hash_ctx_t *c, hls::stream<axis64_t> &in, int inlen, uint8_t mode,   // 1 = TLAST != inlen
+                  bool ended);                                     // B-04: stream già chiuso (TLAST visto)
 void hash_squeeze(hash_ctx_t *c, hls::stream<axis64_t> &out, uint8_t mode);
 
 int  hash_top(hls::stream<axis64_t> &in, hls::stream<axis64_t> &out,              // Hybrid-Test
@@ -153,6 +167,18 @@ int  hash_top(hls::stream<axis64_t> &in, hls::stream<axis64_t> &out,            
 | `inlen` | `0x18` | ✓ | ✓ | ✓ |
 | `mdlen` | `0x20` | ✓ | ✓ | – |
 | `mode` (0 = Ascon, > 0 = SHA-3) | `0x28` | ✓ | – | – |
+
+**Due versioni di controllo (B-04, LOG-015)**, dallo stesso sorgente; la scelta avviene a compile time:
+
+| | `lite` (default) | `ib` (`-DHASH_INBAND`) |
+|---|---|---|
+| Top | `int hash_top(in, out, inlen, …)` | `void hash_top(in, out)` |
+| Controllo | AXI4-Lite + `ap_ctrl_hs` | nessun AXI4-Lite, `ap_ctrl_none` (free-running) |
+| Parametri | registri della tabella sopra | primo beat di `in`: `[31:0]` inlen, `[47:32]` mdlen, `[55:48]` mode |
+| Esito | `ap_return` | un beat di stato dopo il digest, con TLAST |
+| VLNV | `unica.it:hls:hash_<hybrid\|sha3\|ascon>_lite:1.0` | `unica.it:hls:hash_<…>_ib:1.0` |
+
+La versione `ib` segue l'indicazione dei relatori: il driver `uniss_dma` pilota solo gli AXI DMA, quindi l'IP si configura e si avvia attraverso gli stream, come `VPA_IP`.
 
 **Uso con AXI DMA:** il software scrive `inlen` (e `mdlen`/`mode`), avvia l'IP (`ap_start`), poi il canale S2MM (digest, `ceil(mdlen/8)` beat con TLAST) e il canale MM2S (messaggio, `ceil(inlen/8)` beat, byte 0 in `TDATA[7:0]`). L'IP consuma sempre lo stream fino a TLAST, quindi un DMA programmato male non lo blocca e non sporca il messaggio successivo; il mismatch si legge in `ap_return`. Messaggio vuoto: `inlen = 0` e nessun trasferimento MM2S.
 
@@ -207,6 +233,8 @@ Flusso Tcl (`scripts/hls/`), Vitis HLS 2025.1, part `xck26-sfvc784-2LV-c`, desig
 
 Timing chiuso ovunque. Confronto completo, area per modulo e osservazioni in `LOGBOOK.md` (LOG-014); `baseline` (sweep del clock, LOG-010) e `b01` (LOG-013) restano in `results/hls/<design>/`.
 
+**B-04 (LOG-015).** Le versioni `lite` di `b04` coincidono con `b03` (stessa csynth e stessi cicli di cosim). Le versioni `ib`, senza AXI4-Lite, risparmiano 70–240 LUT a parità di cicli per blocco. Nel sistema completo sulla KV260 (PS + 2 AXI DMA + SmartConnect, `pl_clk0` = 100 MHz) il timing è chiuso in tutte e 6 le configurazioni; i risultati sono in `results/vivado/b04/summary.csv`. Sulla scheda tutte e 6 le configurazioni danno digest corretti per len = 0..256 (771 / 514 / 257 vettori); il log è in `results/board/b04/`.
+
 ## Come compilare ed eseguire i test
 
 **Benchmark di latenza software** — hybrid vs standalone, da WSL/Linux:
@@ -249,6 +277,20 @@ Un singolo punto: `set VARIANT=Hybrid-Test`, `set T_HLS=6.67` (opzionale `set ST
 
 Il partizionamento automatico di HLS è disattivato di default (`AUTO_PARTITION=off`, vedi LOG-013): ogni partizionamento dello stato è una pragma esplicita nel codice. Una variabile d'ambiente `DESIGN` diversa da `scripts/hls/design.txt` produce un `WARNING`: dopo l'uso va rimossa (`Remove-Item Env:DESIGN`).
 
+**Flusso B-04 (HLS + Vivado → bitstream per la KV260)**, da Windows nella root della repo:
+
+```bat
+scripts\run_b04_all.bat lite        &rem per ogni variante: HLS (IP + cosim) poi Vivado (bitstream)
+scripts\run_b04_all.bat ib          &rem stessa cosa per la versione in-band (anche in parallelo)
+vivado -mode batch -nojournal -nolog -source scripts\vivado\collect_vivado.tcl
+```
+
+In alternativa si possono lanciare i singoli passi: `scripts\hls\run_b04.bat <lite|ib>` e `scripts\vivado\run_b04.bat <lite|ib>`. Per una sola configurazione: `set VARIANT=…`, `set CTRL=…`, poi `vivado -mode batch -source scripts\vivado\build_bd.tcl`.
+
+Dal Tcl console di Vivado, `source scripts/launch_b04.tcl` e poi `b04 all lite` avviano lo stesso flusso in background.
+
+Il block design è composto da: Zynq MPSoC (preset KV260), due AXI DMA a 64 bit (canale 0 MM2S, canale 1 S2MM), SmartConnect, IP e `pl_clk0` a 100 MHz. Le uscite finiscono in `results/vivado/<design>/<variante>[-ib]/`. Il caricamento sulla scheda è descritto in [`sw/kv260/README.md`](sw/kv260/README.md).
+
 **Vitis HLS (IDE)** — solo per l'ispezione (schedule viewer, analisi): aprire la root della repo come workspace in Vitis Unified 2025.1. Gli output della GUI (`*-Test/*-Test/`) non sono versionati.
 
 ## Workflow Vitis ↔ Git
@@ -282,6 +324,7 @@ La cartella `paper/` raccoglie la letteratura di riferimento, organizzata per te
 - [x] Testbench in modalità throughput (`-argv <algo>`, cicli per blocco da due transazioni RTL).
 - [x] Rimozione della `union` sullo stato nelle tre varianti (B-01, LOG-013) e test di equivalenza contro riferimenti indipendenti.
 - [x] Interfaccia AXI4-Stream (64 bit) + AXI4-Lite nelle tre varianti, sorgenti in C++ (B-03, LOG-014).
+- [x] Versione in-band senza AXI4-Lite, flusso Vivado 2025.1.1 per la KV260 e bitstream delle 6 configurazioni, con app di test per il driver `uniss_dma` (B-04, LOG-015).
 - [x] Inquadramento teorico della crypto-agility (NIST CSWP 39) e raccolta bibliografica.
 
 **Roadmap (da `TODO.txt`)**
@@ -289,9 +332,9 @@ La cartella `paper/` raccoglie la letteratura di riferimento, organizzata per te
 *Priorità / test hardware*
 - [ ] Test dell'implementazione ibrida su ARM Kria.
 - [ ] Ottimizzazioni logiche pendenti (`docs/optimizations/`): partizionamento esplicito dello stato e ristrutturazione dei loop, a partire dal ramo Ascon dell'Hybrid.
-- [ ] Integrazione con AXI DMA + test su FPGA Kria (lato HLS fatto in B-03).
+- [x] Integrazione con AXI DMA + test su FPGA Kria (B-03 lato HLS, B-04 sistema e scheda).
 - [ ] Adattare il benchmark software ai sorgenti C++ a stream.
-- [ ] Block design Vivado (Zynq MPSoC + AXI DMA + IP), bitstream e applicazione di test sulla KV260.
+- [x] Prova su scheda dei bitstream B-04 (`sw/kv260/`): 6 / 6 configurazioni con digest corretti (LOG-015).
 - [ ] Dataset post-implementation completo: area stimata vs reale, II di sintesi vs II osservato in cosim.
 
 *Teoria scritta*

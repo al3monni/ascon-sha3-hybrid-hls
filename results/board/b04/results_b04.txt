@@ -1,0 +1,116 @@
+B-04 board test, Fri Nov 13 11:14:36 UTC 2026
+################ hybrid_lite
+== [hybrid_lite] 1. cleanup of the previous configuration
+   driver removed
+   overlay b04 removed
+== [hybrid_lite] 2. bitstream
+Time taken to load BIN is 144.000000 Milli Seconds
+BIN FILE loaded through FPGA manager successfully
+== [hybrid_lite] 3. device tree overlay
+   overlay status: applied
+== [hybrid_lite] 4. driver
+crw------- 1 root root 507, 0 Nov 13 11:14 /dev/uniss_dma
+[ 1716.056186] Found MM2S channel... Channel 0: datawidth=64 device-id=0
+[ 1716.056828] Found S2MM channel... Channel 1: datawidth=64 device-id=1
+[ 1716.056967] Total channels probed: 2
+== [hybrid_lite] ready: sudo ./hash_dma_test hybrid lite golden.txt
+hash_dma_test: variant hybrid, ctrl lite, lengths 0..256
+  sha3-256  OK (0 failures)
+  sha3-512  OK (0 failures)
+  ascon     OK (0 failures)
+PASS: 771 / 771 digests correct; mean 648.3 us per message (driver + ioctl overhead included)
+################ hybrid_ib
+== [hybrid_ib] 1. cleanup of the previous configuration
+   driver removed
+   overlay b04 removed
+== [hybrid_ib] 2. bitstream
+Time taken to load BIN is 143.000000 Milli Seconds
+BIN FILE loaded through FPGA manager successfully
+== [hybrid_ib] 3. device tree overlay
+   overlay status: applied
+== [hybrid_ib] 4. driver
+crw------- 1 root root 507, 0 Nov 13 11:14 /dev/uniss_dma
+[ 1719.310340] Found MM2S channel... Channel 0: datawidth=64 device-id=0
+[ 1719.310991] Found S2MM channel... Channel 1: datawidth=64 device-id=1
+[ 1719.311133] Total channels probed: 2
+== [hybrid_ib] ready: sudo ./hash_dma_test hybrid ib golden.txt
+hash_dma_test: variant hybrid, ctrl ib, lengths 0..256
+  sha3-256  OK (0 failures)
+  sha3-512  OK (0 failures)
+  ascon     OK (0 failures)
+PASS: 771 / 771 digests correct; mean 647.9 us per message (driver + ioctl overhead included)
+################ sha3_lite
+== [sha3_lite] 1. cleanup of the previous configuration
+   driver removed
+   overlay b04 removed
+== [sha3_lite] 2. bitstream
+Time taken to load BIN is 143.000000 Milli Seconds
+BIN FILE loaded through FPGA manager successfully
+== [sha3_lite] 3. device tree overlay
+   overlay status: applied
+== [sha3_lite] 4. driver
+crw------- 1 root root 507, 0 Nov 13 11:14 /dev/uniss_dma
+[ 1722.594655] Found MM2S channel... Channel 0: datawidth=64 device-id=0
+[ 1722.595250] Found S2MM channel... Channel 1: datawidth=64 device-id=1
+[ 1722.595393] Total channels probed: 2
+== [sha3_lite] ready: sudo ./hash_dma_test sha3 lite golden.txt
+hash_dma_test: variant sha3, ctrl lite, lengths 0..256
+  sha3-256  OK (0 failures)
+  sha3-512  OK (0 failures)
+PASS: 514 / 514 digests correct; mean 635.0 us per message (driver + ioctl overhead included)
+################ sha3_ib
+== [sha3_ib] 1. cleanup of the previous configuration
+   driver removed
+   overlay b04 removed
+== [sha3_ib] 2. bitstream
+Time taken to load BIN is 144.000000 Milli Seconds
+BIN FILE loaded through FPGA manager successfully
+== [sha3_ib] 3. device tree overlay
+   overlay status: applied
+== [sha3_ib] 4. driver
+crw------- 1 root root 507, 0 Nov 13 11:14 /dev/uniss_dma
+[ 1725.181469] Found MM2S channel... Channel 0: datawidth=64 device-id=0
+[ 1725.182095] Found S2MM channel... Channel 1: datawidth=64 device-id=1
+[ 1725.182238] Total channels probed: 2
+== [sha3_ib] ready: sudo ./hash_dma_test sha3 ib golden.txt
+hash_dma_test: variant sha3, ctrl ib, lengths 0..256
+  sha3-256  OK (0 failures)
+  sha3-512  OK (0 failures)
+PASS: 514 / 514 digests correct; mean 635.4 us per message (driver + ioctl overhead included)
+################ ascon_lite
+== [ascon_lite] 1. cleanup of the previous configuration
+   driver removed
+   overlay b04 removed
+== [ascon_lite] 2. bitstream
+Time taken to load BIN is 143.000000 Milli Seconds
+BIN FILE loaded through FPGA manager successfully
+== [ascon_lite] 3. device tree overlay
+   overlay status: applied
+== [ascon_lite] 4. driver
+crw------- 1 root root 507, 0 Nov 13 11:14 /dev/uniss_dma
+[ 1727.769048] Found MM2S channel... Channel 0: datawidth=64 device-id=0
+[ 1727.769689] Found S2MM channel... Channel 1: datawidth=64 device-id=1
+[ 1727.769832] Total channels probed: 2
+== [ascon_lite] ready: sudo ./hash_dma_test ascon lite golden.txt
+hash_dma_test: variant ascon, ctrl lite, lengths 0..256
+  ascon     OK (0 failures)
+PASS: 257 / 257 digests correct; mean 596.9 us per message (driver + ioctl overhead included)
+################ ascon_ib
+== [ascon_ib] 1. cleanup of the previous configuration
+   driver removed
+   overlay b04 removed
+== [ascon_ib] 2. bitstream
+Time taken to load BIN is 143.000000 Milli Seconds
+BIN FILE loaded through FPGA manager successfully
+== [ascon_ib] 3. device tree overlay
+   overlay status: applied
+== [ascon_ib] 4. driver
+crw------- 1 root root 507, 0 Nov 13 11:14 /dev/uniss_dma
+[ 1730.254220] Found MM2S channel... Channel 0: datawidth=64 device-id=0
+[ 1730.254700] Found S2MM channel... Channel 1: datawidth=64 device-id=1
+[ 1730.254837] Total channels probed: 2
+== [ascon_ib] ready: sudo ./hash_dma_test ascon ib golden.txt
+hash_dma_test: variant ascon, ctrl ib, lengths 0..256
+  ascon     OK (0 failures)
+PASS: 257 / 257 digests correct; mean 598.6 us per message (driver + ioctl overhead included)
+################ summary

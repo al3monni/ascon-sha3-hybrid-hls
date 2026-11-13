@@ -1,0 +1,7 @@
+variant,ctrl,pl_clk0_MHz,timing_met,wns_ns,whs_ns,ip_LUT,ip_FF,ip_BRAM,ip_DSP,total_LUT,total_FF,total_BRAM,total_DSP,bit_bin,board_part
+Ascon-Test,lite,100,yes,5.13,0.01,1103,1275,2.0,0,6203,9717,5.0,0,hw/kv260_ascon_lite.bit.bin,xilinx.com:kv260_som:part0:1.4
+Ascon-Test,ib,100,yes,5.092,0.01,1034,1224,2.0,0,6049,9599,5.0,0,hw/kv260_ascon_ib.bit.bin,xilinx.com:kv260_som:part0:1.4
+Hybrid-Test,lite,100,yes,5.109,0.011,3724,3218,0.0,0,8822,11660,3.0,0,hw/kv260_hybrid_lite.bit.bin,xilinx.com:kv260_som:part0:1.4
+Hybrid-Test,ib,100,yes,4.464,0.01,3524,3052,0.0,0,8543,11427,3.0,0,hw/kv260_hybrid_ib.bit.bin,xilinx.com:kv260_som:part0:1.4
+Sha-Test,lite,100,yes,4.171,0.01,2676,2587,0.0,0,7767,11029,3.0,0,hw/kv260_sha3_lite.bit.bin,xilinx.com:kv260_som:part0:1.4
+Sha-Test,ib,100,yes,5.144,0.01,2615,2439,0.0,0,7637,10814,3.0,0,hw/kv260_sha3_ib.bit.bin,xilinx.com:kv260_som:part0:1.4
