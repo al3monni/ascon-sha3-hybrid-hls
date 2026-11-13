@@ -1,0 +1,390 @@
+================================================================
+== Vivado RTL Synthesis Results
+================================================================
++ General Information:
+    * Date:            Thu Nov 12 20:37:39 +0100 2026
+    * Version:         2025.1 (Build 6214317 on Sep 11 2025)
+    * Project:         T_10
+    * Solution:        hls (Vivado IP Flow Target)
+    * Product family:  zynquplus
+    * Target device:   xck26-sfvc784-2LV-c
+
+
+================================================================
+== Run Constraints & Options
+================================================================
++ Design Constraints & Options:
+    * RTL Synthesis target clock:  10 ns
+    * C-Synthesis target clock:    10 ns
+    * C-Synthesis uncertainty:     27%
+
++ RTL Synthesis Options:
+    * config_export -vivado_synth_strategy:     default
+    * config_export -vivado_synth_design_args:  -directive sdx_optimization_effort_high
+
++ Reporting Options:
+    * config_export -vivado_report_level:      2
+    * config_export -vivado_max_timing_paths:  10
+
+
+================================================================
+== RTL Synthesis Resource Summary
+================================================================
+LUT:              3565
+FF:               3078
+DSP:              0
+BRAM:             0
+URAM:             0
+SRL:              0
+
+
+================================================================
+== RTL Synthesis Timing Summary
+================================================================
+* Timing was met
++----------------+-------------+
+| Timing         | Period (ns) |
++----------------+-------------+
+| Target         | 10.000      |
+| Post-Synthesis | 2.657       |
++----------------+-------------+
+
+
+================================================================
+== RTL Synthesis Resources
+================================================================
++--------------------------------------------+------+------+-----+------+------+-----+--------+------+---------+----------+--------+
+| Name                                       | LUT  | FF   | DSP | BRAM | URAM | SRL | Pragma | Impl | Latency | Variable | Source |
++--------------------------------------------+------+------+-----+------+------+-----+--------+------+---------+----------+--------+
+| inst                                       | 3565 | 3078 |     |      |      |     |        |      |         |          |        |
+|   (inst)                                   | 107  | 589  |     |      |      |     |        |      |         |          |        |
+|   H_st_U                                   | 864  | 320  |     |      |      |     |        |      |         |          |        |
+|   grp_hash_top_Pipeline_init_loop_fu_242   |      |      |     |      |      |     |        |      |         |          |        |
+|   grp_hash_top_Pipeline_output_loop_fu_255 | 58   | 25   |     |      |      |     |        |      |         |          |        |
+|   grp_keccakf_asconp12_fu_248              | 2231 | 1823 |     |      |      |     |        |      |         |          |        |
+|     (grp_keccakf_asconp12_fu_248)          | 318  | 634  |     |      |      |     |        |      |         |          |        |
+|   regslice_both_in_r_V_data_V_U            | 85   | 133  |     |      |      |     |        |      |         |          |        |
+|   regslice_both_in_r_V_last_V_U            |      |      |     |      |      |     |        |      |         |          |        |
+|   regslice_both_out_r_V_data_V_U           | 165  | 133  |     |      |      |     |        |      |         |          |        |
+|   regslice_both_out_r_V_keep_V_U           |      |      |     |      |      |     |        |      |         |          |        |
+|   regslice_both_out_r_V_last_V_U           |      |      |     |      |      |     |        |      |         |          |        |
+|   regslice_both_out_r_V_strb_V_U           |      |      |     |      |      |     |        |      |         |          |        |
++--------------------------------------------+------+------+-----+------+------+-----+--------+------+---------+----------+--------+
+
+
+================================================================
+== RTL Synthesis Fail Fast
+================================================================
++-----------------------------------------------------------+-----------+--------+--------+
+| Criteria                                                  | Guideline | Actual | Status |
++-----------------------------------------------------------+-----------+--------+--------+
+| LUT                                                       | 70%       | 3.04%  | OK     |
+| FD                                                        | 50%       | 1.31%  | OK     |
+| LUTRAM+SRL                                                | 25%       | 0.65%  | OK     |
+| CARRY8                                                    | 25%       | 0.26%  | OK     |
+| MUXF7                                                     | 15%       | 0.25%  | OK     |
+| DSP                                                       | 80%       | 0.00%  | OK     |
+| RAMB/FIFO                                                 | 80%       | 0.00%  | OK     |
+| URAM                                                      | 80%       | 0.00%  | OK     |
+| DSP+RAMB+URAM (Avg)                                       | 70%       | 0.00%  | OK     |
+| BUFGCE* + BUFGCTRL                                        | 24        | 0      | OK     |
+| DONT_TOUCH (cells/nets)                                   | 0         | 0      | OK     |
+| MARK_DEBUG (nets)                                         | 0         | 0      | OK     |
+| Control Sets                                              | 2196      | 64     | OK     |
+| Average Fanout for modules > 100k cells                   | 4         | 3.60   | OK     |
+| Max Average Fanout for modules > 100k cells               | 4         | 0      | OK     |
+| Non-FD high fanout nets > 10k loads                       | 0         | 0      | OK     |
++-----------------------------------------------------------+-----------+--------+--------+
+| TIMING-6 (No common primary clock between related clocks) | 0         | 0      | OK     |
+| TIMING-7 (No common node between related clocks)          | 0         | 0      | OK     |
+| TIMING-8 (No common period between related clocks)        | 0         | 0      | OK     |
+| TIMING-14 (LUT on the clock tree)                         | 0         | 0      | OK     |
+| TIMING-35 (No common node in paths with the same clock)   | 0         | 0      | OK     |
++-----------------------------------------------------------+-----------+--------+--------+
+| Number of paths above max LUT budgeting (0.391ns)         | 0         | 0      | OK     |
+| Number of paths above max Net budgeting (0.263ns)         | 0         | 0      | OK     |
++-----------------------------------------------------------+-----------+--------+--------+
+
+
+================================================================
+== RTL Synthesis Timing Paths
+================================================================
+* Timing was met
++-------+-------+-----------------------------+---------------------+--------------+------------+----------------+----------------+--------------+
+| Path  | SLACK | STARTPOINT PIN              | ENDPOINT PIN        | LOGIC LEVELS | MAX FANOUT | DATAPATH DELAY | DATAPATH LOGIC | DATAPATH NET |
+|       |       |                             |                     |              |            |                |          DELAY |        DELAY |
++-------+-------+-----------------------------+---------------------+--------------+------------+----------------+----------------+--------------+
+| Path1 | 7.343 | icmp_ln440_reg_809_reg[0]/C | H_st_U/q0_reg[0]/D  |            7 |        624 |          2.654 |          1.103 |        1.551 |
+| Path2 | 7.343 | icmp_ln440_reg_809_reg[0]/C | H_st_U/q0_reg[10]/D |            7 |        624 |          2.654 |          1.103 |        1.551 |
+| Path3 | 7.343 | icmp_ln440_reg_809_reg[0]/C | H_st_U/q0_reg[11]/D |            7 |        624 |          2.654 |          1.103 |        1.551 |
+| Path4 | 7.343 | icmp_ln440_reg_809_reg[0]/C | H_st_U/q0_reg[12]/D |            7 |        624 |          2.654 |          1.103 |        1.551 |
+| Path5 | 7.343 | icmp_ln440_reg_809_reg[0]/C | H_st_U/q0_reg[13]/D |            7 |        624 |          2.654 |          1.103 |        1.551 |
++-------+-------+-----------------------------+---------------------+--------------+------------+----------------+----------------+--------------+
+
+    +---------------------------------------------------------------------------------------------------------+---------------------+
+    | Path1 Cells                                                                                             | Primitive Type      |
+    +---------------------------------------------------------------------------------------------------------+---------------------+
+    | icmp_ln440_reg_809_reg[0]                                                                               | REGISTER.SDR.FDRE   |
+    | H_st_U/q1[63]_i_7                                                                                       | CLB.LUT.LUT6        |
+    | H_st_U/q1[63]_i_4                                                                                       | CLB.LUT.LUT6        |
+    | H_st_U/ram0_reg_0_15_0_0_i_52                                                                           | CLB.LUT.LUT6        |
+    | H_st_U/ram0_reg_0_15_0_0_i_22                                                                           | CLB.LUT.LUT6        |
+    | grp_hash_top_Pipeline_output_loop_fu_255/flow_control_loop_pipe_sequential_init_U/ram0_reg_0_15_0_0_i_3 | CLB.LUT.LUT6        |
+    | H_st_U/ram0_reg_0_15_0_0__0/SP                                                                          | CLB.LUTRAM.RAM32X1D |
+    | H_st_U/q0[0]_i_1                                                                                        | CLB.LUT.LUT6        |
+    | H_st_U/q0_reg[0]                                                                                        | REGISTER.SDR.FDRE   |
+    | icmp_ln440_reg_809_reg[0]                                                                               | REGISTER.SDR.FDRE   |
+    | H_st_U/q1[63]_i_7                                                                                       | CLB.LUT.LUT6        |
+    | H_st_U/q1[63]_i_4                                                                                       | CLB.LUT.LUT6        |
+    | H_st_U/ram0_reg_0_15_0_0_i_52                                                                           | CLB.LUT.LUT6        |
+    | H_st_U/ram0_reg_0_15_0_0_i_22                                                                           | CLB.LUT.LUT6        |
+    | grp_hash_top_Pipeline_output_loop_fu_255/flow_control_loop_pipe_sequential_init_U/ram0_reg_0_15_0_0_i_3 | CLB.LUT.LUT6        |
+    | H_st_U/ram0_reg_0_15_0_0__20/SP                                                                         | CLB.LUTRAM.RAM32X1D |
+    | H_st_U/q0[10]_i_1                                                                                       | CLB.LUT.LUT6        |
+    | H_st_U/q0_reg[10]                                                                                       | REGISTER.SDR.FDRE   |
+    | icmp_ln440_reg_809_reg[0]                                                                               | REGISTER.SDR.FDRE   |
+    | H_st_U/q1[63]_i_7                                                                                       | CLB.LUT.LUT6        |
+    | H_st_U/q1[63]_i_4                                                                                       | CLB.LUT.LUT6        |
+    | H_st_U/ram0_reg_0_15_0_0_i_52                                                                           | CLB.LUT.LUT6        |
+    | H_st_U/ram0_reg_0_15_0_0_i_22                                                                           | CLB.LUT.LUT6        |
+    | grp_hash_top_Pipeline_output_loop_fu_255/flow_control_loop_pipe_sequential_init_U/ram0_reg_0_15_0_0_i_3 | CLB.LUT.LUT6        |
+    | H_st_U/ram0_reg_0_15_0_0__22/SP                                                                         | CLB.LUTRAM.RAM32X1D |
+    | H_st_U/q0[11]_i_1                                                                                       | CLB.LUT.LUT6        |
+    | H_st_U/q0_reg[11]                                                                                       | REGISTER.SDR.FDRE   |
+    | icmp_ln440_reg_809_reg[0]                                                                               | REGISTER.SDR.FDRE   |
+    | H_st_U/q1[63]_i_7                                                                                       | CLB.LUT.LUT6        |
+    | H_st_U/q1[63]_i_4                                                                                       | CLB.LUT.LUT6        |
+    | H_st_U/ram0_reg_0_15_0_0_i_52                                                                           | CLB.LUT.LUT6        |
+    | H_st_U/ram0_reg_0_15_0_0_i_22                                                                           | CLB.LUT.LUT6        |
+    | grp_hash_top_Pipeline_output_loop_fu_255/flow_control_loop_pipe_sequential_init_U/ram0_reg_0_15_0_0_i_3 | CLB.LUT.LUT6        |
+    | H_st_U/ram0_reg_0_15_0_0__24/SP                                                                         | CLB.LUTRAM.RAM32X1D |
+    | H_st_U/q0[12]_i_1                                                                                       | CLB.LUT.LUT6        |
+    | H_st_U/q0_reg[12]                                                                                       | REGISTER.SDR.FDRE   |
+    | icmp_ln440_reg_809_reg[0]                                                                               | REGISTER.SDR.FDRE   |
+    | H_st_U/q1[63]_i_7                                                                                       | CLB.LUT.LUT6        |
+    | H_st_U/q1[63]_i_4                                                                                       | CLB.LUT.LUT6        |
+    | H_st_U/ram0_reg_0_15_0_0_i_52                                                                           | CLB.LUT.LUT6        |
+    | H_st_U/ram0_reg_0_15_0_0_i_22                                                                           | CLB.LUT.LUT6        |
+    | grp_hash_top_Pipeline_output_loop_fu_255/flow_control_loop_pipe_sequential_init_U/ram0_reg_0_15_0_0_i_3 | CLB.LUT.LUT6        |
+    | H_st_U/ram0_reg_0_15_0_0__26/SP                                                                         | CLB.LUTRAM.RAM32X1D |
+    | H_st_U/q0[13]_i_1                                                                                       | CLB.LUT.LUT6        |
+    | H_st_U/q0_reg[13]                                                                                       | REGISTER.SDR.FDRE   |
+    +---------------------------------------------------------------------------------------------------------+---------------------+
+
+    +---------------------------------------------------------------------------------------------------------+---------------------+
+    | Path2 Cells                                                                                             | Primitive Type      |
+    +---------------------------------------------------------------------------------------------------------+---------------------+
+    | icmp_ln440_reg_809_reg[0]                                                                               | REGISTER.SDR.FDRE   |
+    | H_st_U/q1[63]_i_7                                                                                       | CLB.LUT.LUT6        |
+    | H_st_U/q1[63]_i_4                                                                                       | CLB.LUT.LUT6        |
+    | H_st_U/ram0_reg_0_15_0_0_i_52                                                                           | CLB.LUT.LUT6        |
+    | H_st_U/ram0_reg_0_15_0_0_i_22                                                                           | CLB.LUT.LUT6        |
+    | grp_hash_top_Pipeline_output_loop_fu_255/flow_control_loop_pipe_sequential_init_U/ram0_reg_0_15_0_0_i_3 | CLB.LUT.LUT6        |
+    | H_st_U/ram0_reg_0_15_0_0__0/SP                                                                          | CLB.LUTRAM.RAM32X1D |
+    | H_st_U/q0[0]_i_1                                                                                        | CLB.LUT.LUT6        |
+    | H_st_U/q0_reg[0]                                                                                        | REGISTER.SDR.FDRE   |
+    | icmp_ln440_reg_809_reg[0]                                                                               | REGISTER.SDR.FDRE   |
+    | H_st_U/q1[63]_i_7                                                                                       | CLB.LUT.LUT6        |
+    | H_st_U/q1[63]_i_4                                                                                       | CLB.LUT.LUT6        |
+    | H_st_U/ram0_reg_0_15_0_0_i_52                                                                           | CLB.LUT.LUT6        |
+    | H_st_U/ram0_reg_0_15_0_0_i_22                                                                           | CLB.LUT.LUT6        |
+    | grp_hash_top_Pipeline_output_loop_fu_255/flow_control_loop_pipe_sequential_init_U/ram0_reg_0_15_0_0_i_3 | CLB.LUT.LUT6        |
+    | H_st_U/ram0_reg_0_15_0_0__20/SP                                                                         | CLB.LUTRAM.RAM32X1D |
+    | H_st_U/q0[10]_i_1                                                                                       | CLB.LUT.LUT6        |
+    | H_st_U/q0_reg[10]                                                                                       | REGISTER.SDR.FDRE   |
+    | icmp_ln440_reg_809_reg[0]                                                                               | REGISTER.SDR.FDRE   |
+    | H_st_U/q1[63]_i_7                                                                                       | CLB.LUT.LUT6        |
+    | H_st_U/q1[63]_i_4                                                                                       | CLB.LUT.LUT6        |
+    | H_st_U/ram0_reg_0_15_0_0_i_52                                                                           | CLB.LUT.LUT6        |
+    | H_st_U/ram0_reg_0_15_0_0_i_22                                                                           | CLB.LUT.LUT6        |
+    | grp_hash_top_Pipeline_output_loop_fu_255/flow_control_loop_pipe_sequential_init_U/ram0_reg_0_15_0_0_i_3 | CLB.LUT.LUT6        |
+    | H_st_U/ram0_reg_0_15_0_0__22/SP                                                                         | CLB.LUTRAM.RAM32X1D |
+    | H_st_U/q0[11]_i_1                                                                                       | CLB.LUT.LUT6        |
+    | H_st_U/q0_reg[11]                                                                                       | REGISTER.SDR.FDRE   |
+    | icmp_ln440_reg_809_reg[0]                                                                               | REGISTER.SDR.FDRE   |
+    | H_st_U/q1[63]_i_7                                                                                       | CLB.LUT.LUT6        |
+    | H_st_U/q1[63]_i_4                                                                                       | CLB.LUT.LUT6        |
+    | H_st_U/ram0_reg_0_15_0_0_i_52                                                                           | CLB.LUT.LUT6        |
+    | H_st_U/ram0_reg_0_15_0_0_i_22                                                                           | CLB.LUT.LUT6        |
+    | grp_hash_top_Pipeline_output_loop_fu_255/flow_control_loop_pipe_sequential_init_U/ram0_reg_0_15_0_0_i_3 | CLB.LUT.LUT6        |
+    | H_st_U/ram0_reg_0_15_0_0__24/SP                                                                         | CLB.LUTRAM.RAM32X1D |
+    | H_st_U/q0[12]_i_1                                                                                       | CLB.LUT.LUT6        |
+    | H_st_U/q0_reg[12]                                                                                       | REGISTER.SDR.FDRE   |
+    | icmp_ln440_reg_809_reg[0]                                                                               | REGISTER.SDR.FDRE   |
+    | H_st_U/q1[63]_i_7                                                                                       | CLB.LUT.LUT6        |
+    | H_st_U/q1[63]_i_4                                                                                       | CLB.LUT.LUT6        |
+    | H_st_U/ram0_reg_0_15_0_0_i_52                                                                           | CLB.LUT.LUT6        |
+    | H_st_U/ram0_reg_0_15_0_0_i_22                                                                           | CLB.LUT.LUT6        |
+    | grp_hash_top_Pipeline_output_loop_fu_255/flow_control_loop_pipe_sequential_init_U/ram0_reg_0_15_0_0_i_3 | CLB.LUT.LUT6        |
+    | H_st_U/ram0_reg_0_15_0_0__26/SP                                                                         | CLB.LUTRAM.RAM32X1D |
+    | H_st_U/q0[13]_i_1                                                                                       | CLB.LUT.LUT6        |
+    | H_st_U/q0_reg[13]                                                                                       | REGISTER.SDR.FDRE   |
+    +---------------------------------------------------------------------------------------------------------+---------------------+
+
+    +---------------------------------------------------------------------------------------------------------+---------------------+
+    | Path3 Cells                                                                                             | Primitive Type      |
+    +---------------------------------------------------------------------------------------------------------+---------------------+
+    | icmp_ln440_reg_809_reg[0]                                                                               | REGISTER.SDR.FDRE   |
+    | H_st_U/q1[63]_i_7                                                                                       | CLB.LUT.LUT6        |
+    | H_st_U/q1[63]_i_4                                                                                       | CLB.LUT.LUT6        |
+    | H_st_U/ram0_reg_0_15_0_0_i_52                                                                           | CLB.LUT.LUT6        |
+    | H_st_U/ram0_reg_0_15_0_0_i_22                                                                           | CLB.LUT.LUT6        |
+    | grp_hash_top_Pipeline_output_loop_fu_255/flow_control_loop_pipe_sequential_init_U/ram0_reg_0_15_0_0_i_3 | CLB.LUT.LUT6        |
+    | H_st_U/ram0_reg_0_15_0_0__0/SP                                                                          | CLB.LUTRAM.RAM32X1D |
+    | H_st_U/q0[0]_i_1                                                                                        | CLB.LUT.LUT6        |
+    | H_st_U/q0_reg[0]                                                                                        | REGISTER.SDR.FDRE   |
+    | icmp_ln440_reg_809_reg[0]                                                                               | REGISTER.SDR.FDRE   |
+    | H_st_U/q1[63]_i_7                                                                                       | CLB.LUT.LUT6        |
+    | H_st_U/q1[63]_i_4                                                                                       | CLB.LUT.LUT6        |
+    | H_st_U/ram0_reg_0_15_0_0_i_52                                                                           | CLB.LUT.LUT6        |
+    | H_st_U/ram0_reg_0_15_0_0_i_22                                                                           | CLB.LUT.LUT6        |
+    | grp_hash_top_Pipeline_output_loop_fu_255/flow_control_loop_pipe_sequential_init_U/ram0_reg_0_15_0_0_i_3 | CLB.LUT.LUT6        |
+    | H_st_U/ram0_reg_0_15_0_0__20/SP                                                                         | CLB.LUTRAM.RAM32X1D |
+    | H_st_U/q0[10]_i_1                                                                                       | CLB.LUT.LUT6        |
+    | H_st_U/q0_reg[10]                                                                                       | REGISTER.SDR.FDRE   |
+    | icmp_ln440_reg_809_reg[0]                                                                               | REGISTER.SDR.FDRE   |
+    | H_st_U/q1[63]_i_7                                                                                       | CLB.LUT.LUT6        |
+    | H_st_U/q1[63]_i_4                                                                                       | CLB.LUT.LUT6        |
+    | H_st_U/ram0_reg_0_15_0_0_i_52                                                                           | CLB.LUT.LUT6        |
+    | H_st_U/ram0_reg_0_15_0_0_i_22                                                                           | CLB.LUT.LUT6        |
+    | grp_hash_top_Pipeline_output_loop_fu_255/flow_control_loop_pipe_sequential_init_U/ram0_reg_0_15_0_0_i_3 | CLB.LUT.LUT6        |
+    | H_st_U/ram0_reg_0_15_0_0__22/SP                                                                         | CLB.LUTRAM.RAM32X1D |
+    | H_st_U/q0[11]_i_1                                                                                       | CLB.LUT.LUT6        |
+    | H_st_U/q0_reg[11]                                                                                       | REGISTER.SDR.FDRE   |
+    | icmp_ln440_reg_809_reg[0]                                                                               | REGISTER.SDR.FDRE   |
+    | H_st_U/q1[63]_i_7                                                                                       | CLB.LUT.LUT6        |
+    | H_st_U/q1[63]_i_4                                                                                       | CLB.LUT.LUT6        |
+    | H_st_U/ram0_reg_0_15_0_0_i_52                                                                           | CLB.LUT.LUT6        |
+    | H_st_U/ram0_reg_0_15_0_0_i_22                                                                           | CLB.LUT.LUT6        |
+    | grp_hash_top_Pipeline_output_loop_fu_255/flow_control_loop_pipe_sequential_init_U/ram0_reg_0_15_0_0_i_3 | CLB.LUT.LUT6        |
+    | H_st_U/ram0_reg_0_15_0_0__24/SP                                                                         | CLB.LUTRAM.RAM32X1D |
+    | H_st_U/q0[12]_i_1                                                                                       | CLB.LUT.LUT6        |
+    | H_st_U/q0_reg[12]                                                                                       | REGISTER.SDR.FDRE   |
+    | icmp_ln440_reg_809_reg[0]                                                                               | REGISTER.SDR.FDRE   |
+    | H_st_U/q1[63]_i_7                                                                                       | CLB.LUT.LUT6        |
+    | H_st_U/q1[63]_i_4                                                                                       | CLB.LUT.LUT6        |
+    | H_st_U/ram0_reg_0_15_0_0_i_52                                                                           | CLB.LUT.LUT6        |
+    | H_st_U/ram0_reg_0_15_0_0_i_22                                                                           | CLB.LUT.LUT6        |
+    | grp_hash_top_Pipeline_output_loop_fu_255/flow_control_loop_pipe_sequential_init_U/ram0_reg_0_15_0_0_i_3 | CLB.LUT.LUT6        |
+    | H_st_U/ram0_reg_0_15_0_0__26/SP                                                                         | CLB.LUTRAM.RAM32X1D |
+    | H_st_U/q0[13]_i_1                                                                                       | CLB.LUT.LUT6        |
+    | H_st_U/q0_reg[13]                                                                                       | REGISTER.SDR.FDRE   |
+    +---------------------------------------------------------------------------------------------------------+---------------------+
+
+    +---------------------------------------------------------------------------------------------------------+---------------------+
+    | Path4 Cells                                                                                             | Primitive Type      |
+    +---------------------------------------------------------------------------------------------------------+---------------------+
+    | icmp_ln440_reg_809_reg[0]                                                                               | REGISTER.SDR.FDRE   |
+    | H_st_U/q1[63]_i_7                                                                                       | CLB.LUT.LUT6        |
+    | H_st_U/q1[63]_i_4                                                                                       | CLB.LUT.LUT6        |
+    | H_st_U/ram0_reg_0_15_0_0_i_52                                                                           | CLB.LUT.LUT6        |
+    | H_st_U/ram0_reg_0_15_0_0_i_22                                                                           | CLB.LUT.LUT6        |
+    | grp_hash_top_Pipeline_output_loop_fu_255/flow_control_loop_pipe_sequential_init_U/ram0_reg_0_15_0_0_i_3 | CLB.LUT.LUT6        |
+    | H_st_U/ram0_reg_0_15_0_0__0/SP                                                                          | CLB.LUTRAM.RAM32X1D |
+    | H_st_U/q0[0]_i_1                                                                                        | CLB.LUT.LUT6        |
+    | H_st_U/q0_reg[0]                                                                                        | REGISTER.SDR.FDRE   |
+    | icmp_ln440_reg_809_reg[0]                                                                               | REGISTER.SDR.FDRE   |
+    | H_st_U/q1[63]_i_7                                                                                       | CLB.LUT.LUT6        |
+    | H_st_U/q1[63]_i_4                                                                                       | CLB.LUT.LUT6        |
+    | H_st_U/ram0_reg_0_15_0_0_i_52                                                                           | CLB.LUT.LUT6        |
+    | H_st_U/ram0_reg_0_15_0_0_i_22                                                                           | CLB.LUT.LUT6        |
+    | grp_hash_top_Pipeline_output_loop_fu_255/flow_control_loop_pipe_sequential_init_U/ram0_reg_0_15_0_0_i_3 | CLB.LUT.LUT6        |
+    | H_st_U/ram0_reg_0_15_0_0__20/SP                                                                         | CLB.LUTRAM.RAM32X1D |
+    | H_st_U/q0[10]_i_1                                                                                       | CLB.LUT.LUT6        |
+    | H_st_U/q0_reg[10]                                                                                       | REGISTER.SDR.FDRE   |
+    | icmp_ln440_reg_809_reg[0]                                                                               | REGISTER.SDR.FDRE   |
+    | H_st_U/q1[63]_i_7                                                                                       | CLB.LUT.LUT6        |
+    | H_st_U/q1[63]_i_4                                                                                       | CLB.LUT.LUT6        |
+    | H_st_U/ram0_reg_0_15_0_0_i_52                                                                           | CLB.LUT.LUT6        |
+    | H_st_U/ram0_reg_0_15_0_0_i_22                                                                           | CLB.LUT.LUT6        |
+    | grp_hash_top_Pipeline_output_loop_fu_255/flow_control_loop_pipe_sequential_init_U/ram0_reg_0_15_0_0_i_3 | CLB.LUT.LUT6        |
+    | H_st_U/ram0_reg_0_15_0_0__22/SP                                                                         | CLB.LUTRAM.RAM32X1D |
+    | H_st_U/q0[11]_i_1                                                                                       | CLB.LUT.LUT6        |
+    | H_st_U/q0_reg[11]                                                                                       | REGISTER.SDR.FDRE   |
+    | icmp_ln440_reg_809_reg[0]                                                                               | REGISTER.SDR.FDRE   |
+    | H_st_U/q1[63]_i_7                                                                                       | CLB.LUT.LUT6        |
+    | H_st_U/q1[63]_i_4                                                                                       | CLB.LUT.LUT6        |
+    | H_st_U/ram0_reg_0_15_0_0_i_52                                                                           | CLB.LUT.LUT6        |
+    | H_st_U/ram0_reg_0_15_0_0_i_22                                                                           | CLB.LUT.LUT6        |
+    | grp_hash_top_Pipeline_output_loop_fu_255/flow_control_loop_pipe_sequential_init_U/ram0_reg_0_15_0_0_i_3 | CLB.LUT.LUT6        |
+    | H_st_U/ram0_reg_0_15_0_0__24/SP                                                                         | CLB.LUTRAM.RAM32X1D |
+    | H_st_U/q0[12]_i_1                                                                                       | CLB.LUT.LUT6        |
+    | H_st_U/q0_reg[12]                                                                                       | REGISTER.SDR.FDRE   |
+    | icmp_ln440_reg_809_reg[0]                                                                               | REGISTER.SDR.FDRE   |
+    | H_st_U/q1[63]_i_7                                                                                       | CLB.LUT.LUT6        |
+    | H_st_U/q1[63]_i_4                                                                                       | CLB.LUT.LUT6        |
+    | H_st_U/ram0_reg_0_15_0_0_i_52                                                                           | CLB.LUT.LUT6        |
+    | H_st_U/ram0_reg_0_15_0_0_i_22                                                                           | CLB.LUT.LUT6        |
+    | grp_hash_top_Pipeline_output_loop_fu_255/flow_control_loop_pipe_sequential_init_U/ram0_reg_0_15_0_0_i_3 | CLB.LUT.LUT6        |
+    | H_st_U/ram0_reg_0_15_0_0__26/SP                                                                         | CLB.LUTRAM.RAM32X1D |
+    | H_st_U/q0[13]_i_1                                                                                       | CLB.LUT.LUT6        |
+    | H_st_U/q0_reg[13]                                                                                       | REGISTER.SDR.FDRE   |
+    +---------------------------------------------------------------------------------------------------------+---------------------+
+
+    +---------------------------------------------------------------------------------------------------------+---------------------+
+    | Path5 Cells                                                                                             | Primitive Type      |
+    +---------------------------------------------------------------------------------------------------------+---------------------+
+    | icmp_ln440_reg_809_reg[0]                                                                               | REGISTER.SDR.FDRE   |
+    | H_st_U/q1[63]_i_7                                                                                       | CLB.LUT.LUT6        |
+    | H_st_U/q1[63]_i_4                                                                                       | CLB.LUT.LUT6        |
+    | H_st_U/ram0_reg_0_15_0_0_i_52                                                                           | CLB.LUT.LUT6        |
+    | H_st_U/ram0_reg_0_15_0_0_i_22                                                                           | CLB.LUT.LUT6        |
+    | grp_hash_top_Pipeline_output_loop_fu_255/flow_control_loop_pipe_sequential_init_U/ram0_reg_0_15_0_0_i_3 | CLB.LUT.LUT6        |
+    | H_st_U/ram0_reg_0_15_0_0__0/SP                                                                          | CLB.LUTRAM.RAM32X1D |
+    | H_st_U/q0[0]_i_1                                                                                        | CLB.LUT.LUT6        |
+    | H_st_U/q0_reg[0]                                                                                        | REGISTER.SDR.FDRE   |
+    | icmp_ln440_reg_809_reg[0]                                                                               | REGISTER.SDR.FDRE   |
+    | H_st_U/q1[63]_i_7                                                                                       | CLB.LUT.LUT6        |
+    | H_st_U/q1[63]_i_4                                                                                       | CLB.LUT.LUT6        |
+    | H_st_U/ram0_reg_0_15_0_0_i_52                                                                           | CLB.LUT.LUT6        |
+    | H_st_U/ram0_reg_0_15_0_0_i_22                                                                           | CLB.LUT.LUT6        |
+    | grp_hash_top_Pipeline_output_loop_fu_255/flow_control_loop_pipe_sequential_init_U/ram0_reg_0_15_0_0_i_3 | CLB.LUT.LUT6        |
+    | H_st_U/ram0_reg_0_15_0_0__20/SP                                                                         | CLB.LUTRAM.RAM32X1D |
+    | H_st_U/q0[10]_i_1                                                                                       | CLB.LUT.LUT6        |
+    | H_st_U/q0_reg[10]                                                                                       | REGISTER.SDR.FDRE   |
+    | icmp_ln440_reg_809_reg[0]                                                                               | REGISTER.SDR.FDRE   |
+    | H_st_U/q1[63]_i_7                                                                                       | CLB.LUT.LUT6        |
+    | H_st_U/q1[63]_i_4                                                                                       | CLB.LUT.LUT6        |
+    | H_st_U/ram0_reg_0_15_0_0_i_52                                                                           | CLB.LUT.LUT6        |
+    | H_st_U/ram0_reg_0_15_0_0_i_22                                                                           | CLB.LUT.LUT6        |
+    | grp_hash_top_Pipeline_output_loop_fu_255/flow_control_loop_pipe_sequential_init_U/ram0_reg_0_15_0_0_i_3 | CLB.LUT.LUT6        |
+    | H_st_U/ram0_reg_0_15_0_0__22/SP                                                                         | CLB.LUTRAM.RAM32X1D |
+    | H_st_U/q0[11]_i_1                                                                                       | CLB.LUT.LUT6        |
+    | H_st_U/q0_reg[11]                                                                                       | REGISTER.SDR.FDRE   |
+    | icmp_ln440_reg_809_reg[0]                                                                               | REGISTER.SDR.FDRE   |
+    | H_st_U/q1[63]_i_7                                                                                       | CLB.LUT.LUT6        |
+    | H_st_U/q1[63]_i_4                                                                                       | CLB.LUT.LUT6        |
+    | H_st_U/ram0_reg_0_15_0_0_i_52                                                                           | CLB.LUT.LUT6        |
+    | H_st_U/ram0_reg_0_15_0_0_i_22                                                                           | CLB.LUT.LUT6        |
+    | grp_hash_top_Pipeline_output_loop_fu_255/flow_control_loop_pipe_sequential_init_U/ram0_reg_0_15_0_0_i_3 | CLB.LUT.LUT6        |
+    | H_st_U/ram0_reg_0_15_0_0__24/SP                                                                         | CLB.LUTRAM.RAM32X1D |
+    | H_st_U/q0[12]_i_1                                                                                       | CLB.LUT.LUT6        |
+    | H_st_U/q0_reg[12]                                                                                       | REGISTER.SDR.FDRE   |
+    | icmp_ln440_reg_809_reg[0]                                                                               | REGISTER.SDR.FDRE   |
+    | H_st_U/q1[63]_i_7                                                                                       | CLB.LUT.LUT6        |
+    | H_st_U/q1[63]_i_4                                                                                       | CLB.LUT.LUT6        |
+    | H_st_U/ram0_reg_0_15_0_0_i_52                                                                           | CLB.LUT.LUT6        |
+    | H_st_U/ram0_reg_0_15_0_0_i_22                                                                           | CLB.LUT.LUT6        |
+    | grp_hash_top_Pipeline_output_loop_fu_255/flow_control_loop_pipe_sequential_init_U/ram0_reg_0_15_0_0_i_3 | CLB.LUT.LUT6        |
+    | H_st_U/ram0_reg_0_15_0_0__26/SP                                                                         | CLB.LUTRAM.RAM32X1D |
+    | H_st_U/q0[13]_i_1                                                                                       | CLB.LUT.LUT6        |
+    | H_st_U/q0_reg[13]                                                                                       | REGISTER.SDR.FDRE   |
+    +---------------------------------------------------------------------------------------------------------+---------------------+
+
+
+================================================================
+== RTL Synthesis Vivado Reports
+================================================================
++--------------------------+-----------------------------------------------------------------+
+| Report Type              | Report Location                                                 |
++--------------------------+-----------------------------------------------------------------+
+| design_analysis          | impl/verilog/report/hash_top_design_analysis_synth.rpt          |
+| failfast                 | impl/verilog/report/hash_top_failfast_synth.rpt                 |
+| power                    | impl/verilog/report/hash_top_power_synth.rpt                    |
+| timing                   | impl/verilog/report/hash_top_timing_synth.rpt                   |
+| timing_paths             | impl/verilog/report/hash_top_timing_paths_synth.rpt             |
+| utilization              | impl/verilog/report/hash_top_utilization_synth.rpt              |
+| utilization_hierarchical | impl/verilog/report/hash_top_utilization_hierarchical_synth.rpt |
++--------------------------+-----------------------------------------------------------------+
+
+

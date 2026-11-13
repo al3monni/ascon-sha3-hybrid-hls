@@ -15,6 +15,9 @@
 #   ALGOS    algorithms to run (default per variant, see DEFAULT_ALGOS);
 #            add sha3-256v / sha3-512v for the linearity check
 #   DESIGN   design label (default: scripts/hls/design.txt, see common.tcl)
+#   CTRL     lite | ib (default: lite)  [OPT] B-04: ib -> point in build/hls/<D>/<VARIANT>-ib/
+#            (ib = ap_ctrl_none: cosim checks the digests; the latency columns of the
+#             report may be NA, the cycle counts of the thesis come from the lite points)
 # =============================================================================
 
 # --- env_or, ROOT, DESIGN ---
@@ -33,7 +36,9 @@ set ALGOS   [env_or ALGOS [dict get $DEFAULT_ALGOS $VARIANT]]
 
 # --- Paths (same layout as run_point.tcl) ---
 set TAG  "T_[string map {. p} $T_HLS]"
-set WORK [file join $ROOT build hls $DESIGN $VARIANT]
+# [WAS] set WORK [file join $ROOT build hls $DESIGN $VARIANT]
+# [OPT] B-04: same folder as run_point.tcl for the control version CTRL
+set WORK [file join $ROOT build hls $DESIGN [variant_dir $VARIANT $CTRL]]
 set COMP [file join $WORK $TAG]
 
 if {![file exists [file join $COMP hls syn report csynth.rpt]]} {
@@ -56,7 +61,7 @@ open_component $TAG
 
 set failed {}
 foreach algo $ALGOS {
-    puts "=== run_cosim: \[$DESIGN\] $VARIANT @ $T_HLS ns, algo=$algo ==="
+    puts "=== run_cosim: \[$DESIGN\] $VARIANT ctrl=$CTRL @ $T_HLS ns, algo=$algo ==="
     file delete -force [file join $OUT_DIR $algo.rpt]
     # Testbench returns nonzero on digest mismatch or unknown algo -> cosim error
     if {[catch {cosim_design -O -argv $algo} err]} {
@@ -69,8 +74,8 @@ foreach algo $ALGOS {
 }
 
 if {[llength $failed]} {
-    puts "=== run_cosim: done with FAILURES (\[$DESIGN\] $VARIANT @ $T_HLS ns): $failed ==="
+    puts "=== run_cosim: done with FAILURES (\[$DESIGN\] $VARIANT ctrl=$CTRL @ $T_HLS ns): $failed ==="
 } else {
-    puts "=== run_cosim: done (\[$DESIGN\] $VARIANT @ $T_HLS ns): $ALGOS ==="
+    puts "=== run_cosim: done (\[$DESIGN\] $VARIANT ctrl=$CTRL @ $T_HLS ns): $ALGOS ==="
 }
 exit

@@ -1,0 +1,13 @@
+################ hybrid_lite
+PASS: 771 / 771 digests correct; mean 648.3 us per message (driver + ioctl overhead included)
+################ hybrid_ib
+PASS: 771 / 771 digests correct; mean 647.9 us per message (driver + ioctl overhead included)
+################ sha3_lite
+PASS: 514 / 514 digests correct; mean 635.0 us per message (driver + ioctl overhead included)
+################ sha3_ib
+PASS: 514 / 514 digests correct; mean 635.4 us per message (driver + ioctl overhead included)
+################ ascon_lite
+PASS: 257 / 257 digests correct; mean 596.9 us per message (driver + ioctl overhead included)
+################ ascon_ib
+PASS: 257 / 257 digests correct; mean 598.6 us per message (driver + ioctl overhead included)
+################ summary

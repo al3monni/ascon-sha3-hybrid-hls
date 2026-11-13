@@ -1,0 +1,280 @@
+================================================================
+== Vivado Place & Route Results
+================================================================
++ General Information:
+    * Date:            Thu Nov 12 21:12:06 +0100 2026
+    * Version:         2025.1 (Build 6214317 on Sep 11 2025)
+    * Project:         T_10
+    * Solution:        hls (Vivado IP Flow Target)
+    * Product family:  zynquplus
+    * Target device:   xck26-sfvc784-2LV-c
+
+
+================================================================
+== Run Constraints & Options
+================================================================
++ Design Constraints & Options:
+    * Place & Route target clock:  10 ns
+    * C-Synthesis target clock:    10 ns
+    * C-Synthesis uncertainty:     27%
+
++ RTL Synthesis Options:
+    * config_export -vivado_synth_strategy:     default
+    * config_export -vivado_synth_design_args:  -directive sdx_optimization_effort_high
+
++ Place & Route Options:
+    * config_export -vivado_impl_strategy:  default
+    * config_export -vivado_phys_opt:       auto
+
++ Reporting Options:
+    * config_export -vivado_report_level:      2
+    * config_export -vivado_max_timing_paths:  10
+
+
+================================================================
+== Place & Route Resource Summary
+================================================================
+LUT:              1103
+FF:               1270
+DSP:              0
+BRAM:             4
+URAM:             0
+SRL:              0
+
+
+================================================================
+== Place & Route Timing Summary
+================================================================
+* Timing was met
++----------------+-------------+
+| Timing         | Period (ns) |
++----------------+-------------+
+| Target         | 10.000      |
+| Post-Synthesis | 2.971       |
+| Post-Route     | 3.880       |
++----------------+-------------+
+
+
+================================================================
+== Place & Route Resources
+================================================================
++------------------------------------------+------+------+-----+------+------+-----+--------+------+---------+----------+--------+
+| Name                                     | LUT  | FF   | DSP | BRAM | URAM | SRL | Pragma | Impl | Latency | Variable | Source |
++------------------------------------------+------+------+-----+------+------+-----+--------+------+---------+----------+--------+
+| inst                                     | 1103 | 1270 |     | 4    |      |     |        |      |         |          |        |
+|   (inst)                                 | 33   | 243  |     |      |      |     |        |      |         |          |        |
+|   H_st_U                                 | 93   |      |     | 4    |      |     |        |      |         |          |        |
+|   control_s_axi_U                        | 108  | 85   |     |      |      |     |        |      |         |          |        |
+|   grp_hash_top_Pipeline_init_loop_fu_182 |      |      |     |      |      |     |        |      |         |          |        |
+|   grp_keccakf_asconp12_fu_188            | 693  | 656  |     |      |      |     |        |      |         |          |        |
+|     (grp_keccakf_asconp12_fu_188)        | 22   | 329  |     |      |      |     |        |      |         |          |        |
+|   regslice_both_in_r_V_data_V_U          | 75   | 133  |     |      |      |     |        |      |         |          |        |
+|   regslice_both_in_r_V_last_V_U          |      |      |     |      |      |     |        |      |         |          |        |
+|   regslice_both_out_r_V_data_V_U         | 78   | 133  |     |      |      |     |        |      |         |          |        |
+|   regslice_both_out_r_V_keep_V_U         |      |      |     |      |      |     |        |      |         |          |        |
+|   regslice_both_out_r_V_last_V_U         |      |      |     |      |      |     |        |      |         |          |        |
++------------------------------------------+------+------+-----+------+------+-----+--------+------+---------+----------+--------+
+
+
+================================================================
+== Place & Route Fail Fast
+================================================================
++-----------------------------------------------------------+-----------+--------+--------+
+| Criteria                                                  | Guideline | Actual | Status |
++-----------------------------------------------------------+-----------+--------+--------+
+| LUT                                                       | 70%       | 0.94%  | OK     |
+| FD                                                        | 50%       | 0.54%  | OK     |
+| LUTRAM+SRL                                                | 25%       | 0.00%  | OK     |
+| CARRY8                                                    | 25%       | 0.12%  | OK     |
+| MUXF7                                                     | 15%       | 0.01%  | OK     |
+| DSP                                                       | 80%       | 0.00%  | OK     |
+| RAMB/FIFO                                                 | 80%       | 1.39%  | OK     |
+| URAM                                                      | 80%       | 0.00%  | OK     |
+| DSP+RAMB+URAM (Avg)                                       | 70%       | 1.39%  | OK     |
+| BUFGCE* + BUFGCTRL                                        | 24        | 0      | OK     |
+| DONT_TOUCH (cells/nets)                                   | 0         | 0      | OK     |
+| MARK_DEBUG (nets)                                         | 0         | 0      | OK     |
+| Control Sets                                              | 2196      | 22     | OK     |
+| Average Fanout for modules > 100k cells                   | 4         | 2.99   | OK     |
+| Max Average Fanout for modules > 100k cells               | 4         | 0      | OK     |
+| Non-FD high fanout nets > 10k loads                       | 0         | 0      | OK     |
++-----------------------------------------------------------+-----------+--------+--------+
+| TIMING-6 (No common primary clock between related clocks) | 0         | 0      | OK     |
+| TIMING-7 (No common node between related clocks)          | 0         | 0      | OK     |
+| TIMING-8 (No common period between related clocks)        | 0         | 0      | OK     |
+| TIMING-14 (LUT on the clock tree)                         | 0         | 0      | OK     |
+| TIMING-35 (No common node in paths with the same clock)   | 0         | 0      | OK     |
++-----------------------------------------------------------+-----------+--------+--------+
+| Number of paths above max LUT budgeting (0.391ns)         | 0         | 0      | OK     |
+| Number of paths above max Net budgeting (0.263ns)         | 0         | 0      | OK     |
++-----------------------------------------------------------+-----------+--------+--------+
+
+
+================================================================
+== Place & Route Timing Paths
+================================================================
+* Timing was met
++-------+-------+---------------------------------+------------------------------------+--------------+------------+----------------+----------------+--------------+
+| Path  | SLACK | STARTPOINT PIN                  | ENDPOINT PIN                       | LOGIC LEVELS | MAX FANOUT | DATAPATH DELAY | DATAPATH LOGIC | DATAPATH NET |
+|       |       |                                 |                                    |              |            |                |          DELAY |        DELAY |
++-------+-------+---------------------------------+------------------------------------+--------------+------------+----------------+----------------+--------------+
+| Path1 | 6.120 | H_st_U/ram_reg_bram_0/CLKBWRCLK | H_st_U/ram_reg_bram_0/DINPBDINP[0] |            3 |          7 |          3.405 |          1.575 |        1.830 |
+| Path2 | 6.280 | sext_ln471_reg_424_reg[4]/C     | H_st_U/ram_reg_bram_1/ENBWREN      |            6 |          3 |          3.228 |          0.952 |        2.276 |
+| Path3 | 6.304 | H_st_U/ram_reg_bram_0/CLKBWRCLK | H_st_U/ram_reg_bram_0/DINBDIN[27]  |            2 |          6 |          3.165 |          1.475 |        1.690 |
+| Path4 | 6.324 | H_st_U/ram_reg_bram_0/CLKBWRCLK | H_st_U/ram_reg_bram_0/DINBDIN[0]   |            3 |          7 |          3.144 |          1.748 |        1.396 |
+| Path5 | 6.357 | H_st_U/ram_reg_bram_0/CLKBWRCLK | H_st_U/ram_reg_bram_0/DINBDIN[11]  |            2 |          6 |          3.115 |          1.473 |        1.642 |
++-------+-------+---------------------------------+------------------------------------+--------------+------------+----------------+----------------+--------------+
+
+    +-------------------------------------------------------------------------------------------------+------------------------+
+    | Path1 Cells                                                                                     | Primitive Type         |
+    +-------------------------------------------------------------------------------------------------+------------------------+
+    | H_st_U/ram_reg_bram_0                                                                           | BLOCKRAM.BRAM.RAMB36E2 |
+    | H_st_U/ram_reg_bram_0_i_135                                                                     | CLB.LUT.LUT6           |
+    | H_st_U/ram_reg_bram_0_i_126                                                                     | CLB.LUT.LUT6           |
+    | grp_keccakf_asconp12_fu_188/grp_keccakf_asconp12_Pipeline_rounds_loop_fu_88/ram_reg_bram_0_i_80 | CLB.LUT.LUT5           |
+    | sext_ln471_reg_424_reg[4]                                                                       | REGISTER.SDR.FDRE      |
+    | H_st_U/icmp_ln311_reg_475[0]_i_32                                                               | CLB.LUT.LUT4           |
+    | H_st_U/icmp_ln311_reg_475_reg[0]_i_2                                                            | CLB.CARRY.CARRY8       |
+    | H_st_U/icmp_ln311_reg_475_reg[0]_i_1                                                            | CLB.CARRY.CARRY8       |
+    | regslice_both_in_r_V_data_V_U/ap_CS_fsm[6]_i_1                                                  | CLB.LUT.LUT4           |
+    | regslice_both_in_r_V_data_V_U/ram_reg_bram_0_i_85                                               | CLB.LUT.LUT6           |
+    | grp_keccakf_asconp12_fu_188/ram_reg_bram_0_i_2                                                  | CLB.MUXF.MUXF7         |
+    | H_st_U/ram_reg_bram_1                                                                           | BLOCKRAM.BRAM.RAMB36E2 |
+    | H_st_U/ram_reg_bram_0                                                                           | BLOCKRAM.BRAM.RAMB36E2 |
+    | H_st_U/ram_reg_bram_0_i_94                                                                      | CLB.LUT.LUT6           |
+    | grp_keccakf_asconp12_fu_188/grp_keccakf_asconp12_Pipeline_rounds_loop_fu_88/ram_reg_bram_0_i_45 | CLB.LUT.LUT6           |
+    | H_st_U/ram_reg_bram_0                                                                           | BLOCKRAM.BRAM.RAMB36E2 |
+    | H_st_U/ram_reg_bram_0_i_133                                                                     | CLB.LUT.LUT6           |
+    | H_st_U/ram_reg_bram_0_i_122                                                                     | CLB.LUT.LUT6           |
+    | grp_keccakf_asconp12_fu_188/grp_keccakf_asconp12_Pipeline_rounds_loop_fu_88/ram_reg_bram_0_i_72 | CLB.LUT.LUT6           |
+    | H_st_U/ram_reg_bram_0                                                                           | BLOCKRAM.BRAM.RAMB36E2 |
+    | H_st_U/ram_reg_bram_0_i_110                                                                     | CLB.LUT.LUT6           |
+    | grp_keccakf_asconp12_fu_188/grp_keccakf_asconp12_Pipeline_rounds_loop_fu_88/ram_reg_bram_0_i_61 | CLB.LUT.LUT6           |
+    +-------------------------------------------------------------------------------------------------+------------------------+
+
+    +-------------------------------------------------------------------------------------------------+------------------------+
+    | Path2 Cells                                                                                     | Primitive Type         |
+    +-------------------------------------------------------------------------------------------------+------------------------+
+    | H_st_U/ram_reg_bram_0                                                                           | BLOCKRAM.BRAM.RAMB36E2 |
+    | H_st_U/ram_reg_bram_0_i_135                                                                     | CLB.LUT.LUT6           |
+    | H_st_U/ram_reg_bram_0_i_126                                                                     | CLB.LUT.LUT6           |
+    | grp_keccakf_asconp12_fu_188/grp_keccakf_asconp12_Pipeline_rounds_loop_fu_88/ram_reg_bram_0_i_80 | CLB.LUT.LUT5           |
+    | sext_ln471_reg_424_reg[4]                                                                       | REGISTER.SDR.FDRE      |
+    | H_st_U/icmp_ln311_reg_475[0]_i_32                                                               | CLB.LUT.LUT4           |
+    | H_st_U/icmp_ln311_reg_475_reg[0]_i_2                                                            | CLB.CARRY.CARRY8       |
+    | H_st_U/icmp_ln311_reg_475_reg[0]_i_1                                                            | CLB.CARRY.CARRY8       |
+    | regslice_both_in_r_V_data_V_U/ap_CS_fsm[6]_i_1                                                  | CLB.LUT.LUT4           |
+    | regslice_both_in_r_V_data_V_U/ram_reg_bram_0_i_85                                               | CLB.LUT.LUT6           |
+    | grp_keccakf_asconp12_fu_188/ram_reg_bram_0_i_2                                                  | CLB.MUXF.MUXF7         |
+    | H_st_U/ram_reg_bram_1                                                                           | BLOCKRAM.BRAM.RAMB36E2 |
+    | H_st_U/ram_reg_bram_0                                                                           | BLOCKRAM.BRAM.RAMB36E2 |
+    | H_st_U/ram_reg_bram_0_i_94                                                                      | CLB.LUT.LUT6           |
+    | grp_keccakf_asconp12_fu_188/grp_keccakf_asconp12_Pipeline_rounds_loop_fu_88/ram_reg_bram_0_i_45 | CLB.LUT.LUT6           |
+    | H_st_U/ram_reg_bram_0                                                                           | BLOCKRAM.BRAM.RAMB36E2 |
+    | H_st_U/ram_reg_bram_0_i_133                                                                     | CLB.LUT.LUT6           |
+    | H_st_U/ram_reg_bram_0_i_122                                                                     | CLB.LUT.LUT6           |
+    | grp_keccakf_asconp12_fu_188/grp_keccakf_asconp12_Pipeline_rounds_loop_fu_88/ram_reg_bram_0_i_72 | CLB.LUT.LUT6           |
+    | H_st_U/ram_reg_bram_0                                                                           | BLOCKRAM.BRAM.RAMB36E2 |
+    | H_st_U/ram_reg_bram_0_i_110                                                                     | CLB.LUT.LUT6           |
+    | grp_keccakf_asconp12_fu_188/grp_keccakf_asconp12_Pipeline_rounds_loop_fu_88/ram_reg_bram_0_i_61 | CLB.LUT.LUT6           |
+    +-------------------------------------------------------------------------------------------------+------------------------+
+
+    +-------------------------------------------------------------------------------------------------+------------------------+
+    | Path3 Cells                                                                                     | Primitive Type         |
+    +-------------------------------------------------------------------------------------------------+------------------------+
+    | H_st_U/ram_reg_bram_0                                                                           | BLOCKRAM.BRAM.RAMB36E2 |
+    | H_st_U/ram_reg_bram_0_i_135                                                                     | CLB.LUT.LUT6           |
+    | H_st_U/ram_reg_bram_0_i_126                                                                     | CLB.LUT.LUT6           |
+    | grp_keccakf_asconp12_fu_188/grp_keccakf_asconp12_Pipeline_rounds_loop_fu_88/ram_reg_bram_0_i_80 | CLB.LUT.LUT5           |
+    | sext_ln471_reg_424_reg[4]                                                                       | REGISTER.SDR.FDRE      |
+    | H_st_U/icmp_ln311_reg_475[0]_i_32                                                               | CLB.LUT.LUT4           |
+    | H_st_U/icmp_ln311_reg_475_reg[0]_i_2                                                            | CLB.CARRY.CARRY8       |
+    | H_st_U/icmp_ln311_reg_475_reg[0]_i_1                                                            | CLB.CARRY.CARRY8       |
+    | regslice_both_in_r_V_data_V_U/ap_CS_fsm[6]_i_1                                                  | CLB.LUT.LUT4           |
+    | regslice_both_in_r_V_data_V_U/ram_reg_bram_0_i_85                                               | CLB.LUT.LUT6           |
+    | grp_keccakf_asconp12_fu_188/ram_reg_bram_0_i_2                                                  | CLB.MUXF.MUXF7         |
+    | H_st_U/ram_reg_bram_1                                                                           | BLOCKRAM.BRAM.RAMB36E2 |
+    | H_st_U/ram_reg_bram_0                                                                           | BLOCKRAM.BRAM.RAMB36E2 |
+    | H_st_U/ram_reg_bram_0_i_94                                                                      | CLB.LUT.LUT6           |
+    | grp_keccakf_asconp12_fu_188/grp_keccakf_asconp12_Pipeline_rounds_loop_fu_88/ram_reg_bram_0_i_45 | CLB.LUT.LUT6           |
+    | H_st_U/ram_reg_bram_0                                                                           | BLOCKRAM.BRAM.RAMB36E2 |
+    | H_st_U/ram_reg_bram_0_i_133                                                                     | CLB.LUT.LUT6           |
+    | H_st_U/ram_reg_bram_0_i_122                                                                     | CLB.LUT.LUT6           |
+    | grp_keccakf_asconp12_fu_188/grp_keccakf_asconp12_Pipeline_rounds_loop_fu_88/ram_reg_bram_0_i_72 | CLB.LUT.LUT6           |
+    | H_st_U/ram_reg_bram_0                                                                           | BLOCKRAM.BRAM.RAMB36E2 |
+    | H_st_U/ram_reg_bram_0_i_110                                                                     | CLB.LUT.LUT6           |
+    | grp_keccakf_asconp12_fu_188/grp_keccakf_asconp12_Pipeline_rounds_loop_fu_88/ram_reg_bram_0_i_61 | CLB.LUT.LUT6           |
+    +-------------------------------------------------------------------------------------------------+------------------------+
+
+    +-------------------------------------------------------------------------------------------------+------------------------+
+    | Path4 Cells                                                                                     | Primitive Type         |
+    +-------------------------------------------------------------------------------------------------+------------------------+
+    | H_st_U/ram_reg_bram_0                                                                           | BLOCKRAM.BRAM.RAMB36E2 |
+    | H_st_U/ram_reg_bram_0_i_135                                                                     | CLB.LUT.LUT6           |
+    | H_st_U/ram_reg_bram_0_i_126                                                                     | CLB.LUT.LUT6           |
+    | grp_keccakf_asconp12_fu_188/grp_keccakf_asconp12_Pipeline_rounds_loop_fu_88/ram_reg_bram_0_i_80 | CLB.LUT.LUT5           |
+    | sext_ln471_reg_424_reg[4]                                                                       | REGISTER.SDR.FDRE      |
+    | H_st_U/icmp_ln311_reg_475[0]_i_32                                                               | CLB.LUT.LUT4           |
+    | H_st_U/icmp_ln311_reg_475_reg[0]_i_2                                                            | CLB.CARRY.CARRY8       |
+    | H_st_U/icmp_ln311_reg_475_reg[0]_i_1                                                            | CLB.CARRY.CARRY8       |
+    | regslice_both_in_r_V_data_V_U/ap_CS_fsm[6]_i_1                                                  | CLB.LUT.LUT4           |
+    | regslice_both_in_r_V_data_V_U/ram_reg_bram_0_i_85                                               | CLB.LUT.LUT6           |
+    | grp_keccakf_asconp12_fu_188/ram_reg_bram_0_i_2                                                  | CLB.MUXF.MUXF7         |
+    | H_st_U/ram_reg_bram_1                                                                           | BLOCKRAM.BRAM.RAMB36E2 |
+    | H_st_U/ram_reg_bram_0                                                                           | BLOCKRAM.BRAM.RAMB36E2 |
+    | H_st_U/ram_reg_bram_0_i_94                                                                      | CLB.LUT.LUT6           |
+    | grp_keccakf_asconp12_fu_188/grp_keccakf_asconp12_Pipeline_rounds_loop_fu_88/ram_reg_bram_0_i_45 | CLB.LUT.LUT6           |
+    | H_st_U/ram_reg_bram_0                                                                           | BLOCKRAM.BRAM.RAMB36E2 |
+    | H_st_U/ram_reg_bram_0_i_133                                                                     | CLB.LUT.LUT6           |
+    | H_st_U/ram_reg_bram_0_i_122                                                                     | CLB.LUT.LUT6           |
+    | grp_keccakf_asconp12_fu_188/grp_keccakf_asconp12_Pipeline_rounds_loop_fu_88/ram_reg_bram_0_i_72 | CLB.LUT.LUT6           |
+    | H_st_U/ram_reg_bram_0                                                                           | BLOCKRAM.BRAM.RAMB36E2 |
+    | H_st_U/ram_reg_bram_0_i_110                                                                     | CLB.LUT.LUT6           |
+    | grp_keccakf_asconp12_fu_188/grp_keccakf_asconp12_Pipeline_rounds_loop_fu_88/ram_reg_bram_0_i_61 | CLB.LUT.LUT6           |
+    +-------------------------------------------------------------------------------------------------+------------------------+
+
+    +-------------------------------------------------------------------------------------------------+------------------------+
+    | Path5 Cells                                                                                     | Primitive Type         |
+    +-------------------------------------------------------------------------------------------------+------------------------+
+    | H_st_U/ram_reg_bram_0                                                                           | BLOCKRAM.BRAM.RAMB36E2 |
+    | H_st_U/ram_reg_bram_0_i_135                                                                     | CLB.LUT.LUT6           |
+    | H_st_U/ram_reg_bram_0_i_126                                                                     | CLB.LUT.LUT6           |
+    | grp_keccakf_asconp12_fu_188/grp_keccakf_asconp12_Pipeline_rounds_loop_fu_88/ram_reg_bram_0_i_80 | CLB.LUT.LUT5           |
+    | sext_ln471_reg_424_reg[4]                                                                       | REGISTER.SDR.FDRE      |
+    | H_st_U/icmp_ln311_reg_475[0]_i_32                                                               | CLB.LUT.LUT4           |
+    | H_st_U/icmp_ln311_reg_475_reg[0]_i_2                                                            | CLB.CARRY.CARRY8       |
+    | H_st_U/icmp_ln311_reg_475_reg[0]_i_1                                                            | CLB.CARRY.CARRY8       |
+    | regslice_both_in_r_V_data_V_U/ap_CS_fsm[6]_i_1                                                  | CLB.LUT.LUT4           |
+    | regslice_both_in_r_V_data_V_U/ram_reg_bram_0_i_85                                               | CLB.LUT.LUT6           |
+    | grp_keccakf_asconp12_fu_188/ram_reg_bram_0_i_2                                                  | CLB.MUXF.MUXF7         |
+    | H_st_U/ram_reg_bram_1                                                                           | BLOCKRAM.BRAM.RAMB36E2 |
+    | H_st_U/ram_reg_bram_0                                                                           | BLOCKRAM.BRAM.RAMB36E2 |
+    | H_st_U/ram_reg_bram_0_i_94                                                                      | CLB.LUT.LUT6           |
+    | grp_keccakf_asconp12_fu_188/grp_keccakf_asconp12_Pipeline_rounds_loop_fu_88/ram_reg_bram_0_i_45 | CLB.LUT.LUT6           |
+    | H_st_U/ram_reg_bram_0                                                                           | BLOCKRAM.BRAM.RAMB36E2 |
+    | H_st_U/ram_reg_bram_0_i_133                                                                     | CLB.LUT.LUT6           |
+    | H_st_U/ram_reg_bram_0_i_122                                                                     | CLB.LUT.LUT6           |
+    | grp_keccakf_asconp12_fu_188/grp_keccakf_asconp12_Pipeline_rounds_loop_fu_88/ram_reg_bram_0_i_72 | CLB.LUT.LUT6           |
+    | H_st_U/ram_reg_bram_0                                                                           | BLOCKRAM.BRAM.RAMB36E2 |
+    | H_st_U/ram_reg_bram_0_i_110                                                                     | CLB.LUT.LUT6           |
+    | grp_keccakf_asconp12_fu_188/grp_keccakf_asconp12_Pipeline_rounds_loop_fu_88/ram_reg_bram_0_i_61 | CLB.LUT.LUT6           |
+    +-------------------------------------------------------------------------------------------------+------------------------+
+
+
+================================================================
+== Place & Route Vivado Reports
+================================================================
++--------------------------+------------------------------------------------------------------+
+| Report Type              | Report Location                                                  |
++--------------------------+------------------------------------------------------------------+
+| design_analysis          | impl/verilog/report/hash_top_design_analysis_routed.rpt          |
+| failfast                 | impl/verilog/report/hash_top_failfast_routed.rpt                 |
+| power                    | impl/verilog/report/hash_top_power_routed.rpt                    |
+| status                   | impl/verilog/report/hash_top_status_routed.rpt                   |
+| timing                   | impl/verilog/report/hash_top_timing_routed.rpt                   |
+| timing_paths             | impl/verilog/report/hash_top_timing_paths_routed.rpt             |
+| utilization              | impl/verilog/report/hash_top_utilization_routed.rpt              |
+| utilization_hierarchical | impl/verilog/report/hash_top_utilization_hierarchical_routed.rpt |
++--------------------------+------------------------------------------------------------------+
+
+

@@ -29,6 +29,7 @@ Storico delle modifiche al codice e alla configurazione, dalla base di partenza 
 | [LOG-012](#log-012--ristrutturazione-repo-versioni-di-design-e-flusso-di-riferimento) | 2026-11-05 | Ristrutturazione repo: versioni di design e flusso di riferimento | — |
 | [LOG-013](#log-013--b-01-rimozione-della-union-sullo-stato) | 2026-11-05 | B-01: rimozione della `union` sullo stato (branch `b01-remove-union`) | Hybrid, SHA-3, Ascon |
 | [LOG-014](#log-014--b-03-interfaccia-axi4-stream--axi4-lite) | 2026-11-06 | B-03: interfaccia AXI4-Stream + AXI4-Lite (branch `b03-axi-stream`) | Hybrid, SHA-3, Ascon |
+| [LOG-015](#log-015--b-04-versione-in-band-e-flusso-vivado-per-la-kv260) | 2026-11-12/13 | B-04: versione in-band (senza AXI4-Lite) e flusso Vivado 2025.1.1 per la KV260 (block design, bitstream, prova su scheda) | Hybrid, SHA-3, Ascon |
 
 ---
 
@@ -583,6 +584,143 @@ Rispetto a b01: SHA-3 TP +16% / +10% (SHA3-256 / SHA3-512) e TP/kLUT −4% / −
 
 ---
 
+## LOG-015 — B-04: versione in-band e flusso Vivado per la KV260
+
+**Contesto.** I relatori hanno indicato due cose: riusare gli script Tcl del repo [mdc-suite/AXI-based-driver-applications](https://github.com/mdc-suite/AXI-based-driver-applications) per i flussi Vitis e Vivado, e passare i parametri nel primo buffer dello stream invece che tramite AXI4-Lite. Il motivo è che il loro driver `uniss_dma` pilota solo gli AXI DMA. Gli script Vivado del repo sono dump di Vivado 2021.2/2023 legati ai loro design (AES, VPA), quindi non si possono rieseguire così come sono:
+- controllo bloccante sulla versione del tool;
+- percorsi assoluti;
+- versioni delle IP fissate;
+- checkpoint importati.
+
+Per questo il flusso è stato riscritto per Vivado 2025.1.1 mantenendo la stessa architettura di sistema. Si producono entrambe le versioni dell'IP, `lite` (AXI4-Lite, interfaccia b03) e `ib` (in-band), nelle tre varianti. In tutto sono 6 IP e 6 bitstream, con etichetta di design `b04`.
+
+**Decisioni**
+- **Un solo sorgente per variante.** La versione si sceglie a compile time con `-DHASH_INBAND` (Tcl: `CTRL=lite|ib`). La spugna (init / absorb / squeeze) è la stessa nelle due versioni; cambia solo il top.
+- **Versione `ib`.**
+  - `ap_ctrl_none`, quindi l'IP è free-running come `VPA_IP`. La cosim resta possibile perché tutte le porte sono `hls::stream` (UG1399).
+  - **Header** nel primo beat dello stream di ingresso: `[31:0]` inlen, `[47:32]` mdlen, `[55:48]` mode. Il formato è comune alle tre varianti; le standalone ignorano i campi che non usano.
+  - **Beat di stato** dopo il digest, con TLAST: 0 = OK, 1 = TLAST ≠ inlen. Sostituisce `ap_return`. Il trasferimento S2MM diventa digest + 8 byte.
+  - **Robustezza invariata.** L'IP consuma sempre lo stream fino a TLAST. Si aggiunge il caso "TLAST già sull'header con inlen > 0".
+- **Block design.** Il sistema replica quello dei relatori, con stream a 64 bit:
+  - Zynq MPSoC con il preset della board `kv260_som`;
+  - AXI DMA `axi_dma_0`, solo MM2S, canale 0 del driver, a `0xA000_0000`;
+  - AXI DMA `axi_dma_1`, solo S2MM, canale 1, a `0xA001_0000`;
+  - SmartConnect per i dati (verso `S_AXI_HPC0_FPD`, 128 bit) e per il controllo (da `M_AXI_HPM0_FPD`);
+  - registri dell'IP `lite` a `0xA002_0000`;
+  - `pl_clk0` a 100 MHz.
+- **Uscite per configurazione:**
+  - `.bit`;
+  - `.bit.bin` prodotto da bootgen, nello stesso formato byte-swapped del `aes256_dma.bin` dei relatori, da caricare con `fpgautil -b`;
+  - `.xsa`;
+  - `pl.dtsi` per `uniss_dma`, nel formato di `pl_vpa.dtsi`;
+  - report post-route;
+  - `summary.txt`.
+
+**Modifiche**
+- `*-Test/hash.h`, `hash.cpp`, `main.cpp` (tutte e tre le varianti):
+  - macro `HDR_*` e `HASH_DIGEST_TLAST`;
+  - `hash_absorb(..., bool ended)`: **[WAS]** `last = (nbeats == 0)` dentro la funzione → **[OPT]** lo decide il chiamante. Con `lite` il valore è identico a b03; con `ib` è il TLAST dell'header;
+  - nuovo top `#ifdef HASH_INBAND`;
+  - testbench con header e beat di stato, più un test `robust` in più per la versione `ib`.
+- `tests/equivalence/`: `kat_sweep.c` e `run.sh` supportano `CTRL=ib`.
+- `scripts/hls/`:
+  - `common.tcl`: `CTRL`, `variant_dir`, `ip_name`, VLNV `unica.it:hls:hash_<v>_<ctrl>:1.0`;
+  - `run_point.tcl`: `-cflags`, `config_export`, export dell'IP sempre attivo, tabella di confronto passo per passo con il `run_hls.tcl` dei relatori;
+  - `run_cosim.tcl`: `CTRL`;
+  - `run_b04.bat`;
+  - `design.txt` = `b04`.
+- `scripts/vivado/` (nuovo):
+  - `build_bd.tcl`, con tabella di confronto con gli script Vivado dei relatori;
+  - `ps_kv260_preset.tcl`, preset del PS preso dallo script AES 2023, usato solo senza board files;
+  - `run_b04.bat`, `collect_vivado.tcl`.
+- `scripts/`: `run_b04_all.bat`, `launch_b04.tcl` (avvio in background dal Tcl console di Vivado), `clean_env.bat`.
+- `sw/kv260/`:
+  - `hash_dma_test.c`: test di tutti i digest 0..256 contro `golden.txt` via `/dev/uniss_dma`, entrambe le versioni;
+  - `load_cfg.sh`: carica una configurazione senza riavvio (rimozione di driver e overlay precedenti, `fpgautil -b`, overlay via configfs, `insmod`);
+  - `test_all.sh`: le 6 configurazioni in sequenza, con log;
+  - `build_driver.sh`: compila `axidma.ko` sulla scheda;
+  - `README.md`: procedura su scheda.
+- `results/board/b04/`: log della prova su scheda (`results_b04.txt`, `results_b04_summary.txt`).
+- `.gitignore`: `results/vivado/**/hw/` (bitstream e `.xsa`, ~30 MB per configurazione, rigenerabili).
+
+**Verifica**
+- **g++ (header HLS):** KAT, `robust`, throughput ed equivalenza (771 / 514 / 257 vettori) in entrambe le versioni; ASan/UBSan puliti.
+- **HLS, 6 punti @ 10 ns:** csim PASS e cosim PASS (KAT, `robust`, throughput), timing chiuso.
+  - La cosim della versione `ib` (`ap_ctrl_none`) funziona come atteso con porte solo stream.
+  - Le versioni `lite` b04 coincidono con b03: stessa csynth (LUT/FF stimati, latenza), stessi cicli di cosim (KAT 2275 / 4534 / 13109 sull'Hybrid) e stessa area post-route OOC. La modifica di `hash_absorb` non cambia l'RTL.
+- **Vivado 2025.1.1:** 6 bitstream con timing chiuso a 100 MHz (WNS da +4.17 a +5.14 ns, WHS ≥ +0.010 ns). Board part `kv260_som:part0:1.4`, quindi è stato applicato il preset ufficiale.
+- **`.bit.bin`:** nello stesso formato del `.bin` dei relatori (sync word `665599AA`, byte-swapped).
+- **Overlay:** i 6 `pl.dtsi` compilano con `dtc -@`.
+- **App di test (`sw/kv260/hash_dma_test.c`):** verificata sul PC contro il modello C dell'IP, con un driver `uniss_dma` simulato. Risultato: 771 / 514 / 257 digest corretti in tutte e 6 le configurazioni. Gli offset dei registri `lite` sono confermati dalla csynth: `0x10` `ap_return`, `0x18` `inlen`, `0x20` `mdlen`, `0x28` `mode`.
+- **Su scheda (KV260, 2026-11-13):**
+  - Ubuntu 22.04.5 LTS, kernel `5.15.0-1080-xilinx-zynqmp`; driver `uniss_dma` dei relatori compilato sulla scheda;
+  - app di default `k26-starter-kits` scaricata con `xmutil unloadapp`;
+  - `pl0_ref` = 99 999 999 Hz e attivo anche senza overlay, quindi il dtsi non deve impostare il clock;
+  - per ogni configurazione il driver rileva i 2 canali (MM2S canale 0, S2MM canale 1, 64 bit);
+  - le 6 configurazioni sono state caricate in sequenza senza riavvio (`test_all.sh`): **tutti i digest sono corretti**.
+
+**Risultati IP** (`results/hls/b04/`, @ 10 ns; area e frequenza post-route Vivado OOC dell'IP da solo)
+
+| Variante | Versione | LUT | FF | BRAM | f post-route [MHz] | Δ LUT / Δ FF vs `lite` |
+|---|---|---:|---:|---:|---:|---|
+| Hybrid | lite | 3665 | 3244 | 0 | 194.0 | — |
+| | ib | 3423 | 3078 | 0 | 182.0 | −242 (−6.6%) / −166 (−5.1%) |
+| SHA-3 | lite | 2527 | 2613 | 0 | 174.9 | — |
+| | ib | 2434 | 2466 | 0 | 178.3 | −93 (−3.7%) / −147 (−5.6%) |
+| Ascon | lite | 1103 | 1270 | 4 | 257.7 | — |
+| | ib | 1033 | 1219 | 4 | 265.4 | −70 (−6.3%) / −51 (−4.0%) |
+
+**Cicli per blocco** (cosim di throughput, c = (L(len1) − L(len0)) / k)
+
+| Variante | SHA3-256 lite / ib | SHA3-512 lite / ib | Ascon lite / ib |
+|---|---|---|---|
+| Hybrid | 3293 / 3290 | 3269 / 3268 | 449 / 449 |
+| SHA-3 | 3269 / 3266 | 3245 / 3244 | – |
+| Ascon | – | – | 24 / 24 |
+
+- **Latenze della versione `ib`.** Con `ap_ctrl_none` la cosim riporta la latenza di ogni transazione a partire dall'inizio della simulazione, non dal suo avvio. La seconda transazione vale quindi `max − min` del report, e il calcolo di c va fatto su questo valore.
+  - Per questa ragione le colonne `cosim_*` di `summary.csv` sulle righe `-ib` non sono latenze per transazione.
+  - L'header aggiunge 1 ciclo di latenza fissa (L(len0): 3284 contro 3283 sull'Hybrid); il costo per blocco è lo stesso a meno di ±3 cicli.
+
+**Risultati di sistema** (`results/vivado/b04/summary.csv`: post-route nel block design completo, `pl_clk0` = 100 MHz)
+
+| Variante | Versione | `hash_0` LUT / FF / BRAM | PL totale LUT / FF / BRAM | WNS [ns] |
+|---|---|---|---|---:|
+| Hybrid | lite | 3724 / 3218 / 0 | 8822 / 11660 / 3 | +5.109 |
+| | ib | 3524 / 3052 / 0 | 8543 / 11427 / 3 | +4.464 |
+| SHA-3 | lite | 2676 / 2587 / 0 | 7767 / 11029 / 3 | +4.171 |
+| | ib | 2615 / 2439 / 0 | 7637 / 10814 / 3 | +5.144 |
+| Ascon | lite | 1103 / 1275 / 2 | 6203 / 9717 / 5 | +5.130 |
+| | ib | 1034 / 1224 / 2 | 6049 / 9599 / 5 | +5.092 |
+
+Le BRAM sono in tile RAMB36. Nel sistema, le 2 RAMB36 di Ascon corrispondono alle "4 BRAM" (RAMB18) del report OOC.
+
+**Risultati su scheda** (`results/board/b04/`, `hash_dma_test`, len = 0..256 byte per ogni algoritmo, `pl_clk0` = 100 MHz)
+
+| Variante | Versione | Digest corretti | Tempo medio per messaggio [µs] |
+|---|---|---:|---:|
+| Hybrid | lite | 771 / 771 | 648.3 |
+| | ib | 771 / 771 | 647.9 |
+| SHA-3 | lite | 514 / 514 | 635.0 |
+| | ib | 514 / 514 | 635.4 |
+| Ascon | lite | 257 / 257 | 596.9 |
+| | ib | 257 / 257 | 598.6 |
+
+Il tempo per messaggio è un tempo di sistema, misurato lato utente intorno a `ip_hash()`. Comprende il reset dei DMA, le `ioctl` e le copie fisse da 65 535 byte del driver per ogni `WRITE_BUFFER` / `READ_BUFFER`, oltre al polling. Non misura il core e non va usato per il throughput: per quello restano validi i cicli per blocco della cosim.
+
+**Osservazioni**
+- **Costo di AXI4-Lite.** Togliere `s_axi_control` fa risparmiare 70–240 LUT e 50–170 FF sull'IP, più uno slave della SmartConnect di controllo (circa 80 LUT). Su Ascon il risparmio vale il 6% dei LUT dell'IP. I cicli per blocco non cambiano, quindi nella metrica throughput/area la versione `ib` migliora solo grazie all'area.
+- **Peso dell'infrastruttura.** PS, 2 AXI DMA e 2 SmartConnect occupano circa 5100 LUT e 8400 FF, uguali per tutte le varianti. A livello di sistema l'IP vale dal 17% (Ascon) al 42% (Hybrid) dei LUT del PL. Il confronto Hybrid contro standalone resta quindi sull'area dell'IP (OOC o `hash_0`), non sul totale del PL.
+- **Frequenza OOC.** Con lo stesso RTL la frequenza post-route OOC cambia rispetto a b03: SHA-3 lite passa da 200.0 a 174.9 MHz, Hybrid lite da 187.8 a 194.0 MHz. L'unica differenza è il nome dell'IP (VLNV), che cambia i nomi dei moduli e quindi il placement. Con un target di 10 ns la frequenza post-route OOC è solo indicativa (variabilità di P&R): per la Fmax serve la fase 2 del metodo (`config_export -vivado_clock`, LOG-010).
+- **Clock su scheda.** Il bitstream è chiuso a 100 MHz. Il dtsi, come quelli dei relatori, non imposta `pl_clk0`: si usa il valore del boot firmware della Kria (vedi `sw/kv260/README.md`). Sulla scheda il valore è confermato: 99 999 999 Hz.
+- **Versioni `lite` e `ib` su scheda.** Entrambe danno digest corretti con lo stesso driver. Nella versione `ib` basta il driver dei relatori; la versione `lite` richiede in più l'accesso ai registri via `/dev/mem`. Il tempo per messaggio delle due versioni differisce al massimo di 1.7 µs, cioè meno dello 0.3%.
+
+**Note**
+- I file `.bit`, `.bit.bin` e `.xsa` sono in `results/vivado/b04/<variante>[-ib]/hw/` e non sono versionati (`.gitignore`). Il `.bin` di `write_bitstream` non è byte-swapped e non va usato con `fpgautil`.
+- Il partizionamento dello stato e le altre ottimizzazioni logiche (B-02, B-07, B-08) restano da fare. Con l'IP ora integrabile, ogni ottimizzazione si può provare anche su scheda.
+
+---
+
 ## Backlog
 
 Attività pianificate, in ordine di priorità. Quando un'attività parte, riceve un `LOG-NNN`.
@@ -592,7 +730,7 @@ Attività pianificate, in ordine di priorità. Quando un'attività parte, riceve
 | B-01 | **Rimuovere la `union` su `st`** (LOG-013): stato solo `uint64_t q[25]` (Ascon: `q[5]`), viste a byte ricostruite con shift/mask. Sblocca `ARRAY_PARTITION` sullo stato e II=1 nei loop limitati dalle porte | tutte | `docs/optimizations/*` §1 | fatto (branch `b01-remove-union`) |
 | B-02 | Rompere la dipendenza seriale in `rho_pi()` | Hybrid, SHA-3 | `ottimizzazioni_logiche_{hybrid,sha3}.md` §2 | da fare |
 | B-03 | **Wrapper AXI4-Stream** (LOG-014: fatto nelle tre varianti; scelto AXI4-Lite + `inlen`/TLAST) (`hls::stream` + `ap_axiu`, TLAST sull'ultimo beat) per l'integrazione con AXI DMA. Da decidere: controllo via AXI-Lite oppure header in-band + `ap_ctrl_none` (32 bit, compatibile con il driver `uniss_dma` di [mdc-suite/AXI-based-driver-applications](https://github.com/mdc-suite/AXI-based-driver-applications)). Bozza AXI-Lite a 8 bit già verificata in C (KAT + TLAST) | Hybrid → poi tutte | `docs/optimizations/*` §3/§4 | fatto (branch `b03-axi-stream`) |
-| B-04 | Block design Vivado: Zynq MPSoC + AXI DMA + IP, bitstream/`.xsa`, applicazione di test sulla KV260 | Hybrid → poi tutte | — | da fare |
+| B-04 | Block design Vivado: Zynq MPSoC + AXI DMA + IP, bitstream/`.xsa`, applicazione di test sulla KV260 (LOG-015: bitstream delle 6 configurazioni `lite` / `ib`; prova su scheda superata in tutte e 6, tutti i digest corretti) | tutte | `scripts/vivado/`, `sw/kv260/` | fatto (branch `b04-vivado`) |
 | B-05 | Dataset di tesi: area stimata vs reale, II di sintesi vs II osservato in cosim, throughput/area per algoritmo | tutte | — | da fare |
 | B-06 | Pulizia: rimuovere `keccakf_rndc` non usato in `keccakf_asconp12()` (Hybrid) e le variabili inutilizzate (`i`, `j`) | Hybrid | LOG-001 | da fare |
 | B-07 | Ottimizzazioni Ascon minori: ~~azzerare solo 5 word in `hash_init`~~ (fatto in B-01), absorb a granularità di word | Ascon | `ottimizzazioni_logiche_ascon.md` §2–3 | da fare |

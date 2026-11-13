@@ -1,0 +1,35 @@
+Copyright 1986-2022 Xilinx, Inc. All Rights Reserved. Copyright 2022-2025 Advanced Micro Devices, Inc. All Rights Reserved.
+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+| Tool Version : Vivado v.2025.1.1 (win64) Build 6233196 Thu Sep 11 21:27:30 MDT 2025
+| Date         : Thu Nov 12 21:16:48 2026
+| Host         : al3monni-DESKTOP running 64-bit major release  (build 9200)
+| Command      : report_utilization -hierarchical -hierarchical_depth 2 -file C:/Users/monni/Desktop/Vitis-HLS_Components/results/vivado/b04/Sha-Test/utilization_hier.rpt
+| Design       : hash_bd_wrapper
+| Device       : xck26-sfvc784-2LV-c
+| Speed File   : -2LV
+| Design State : Routed
+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+Utilization Design Information
+
+Table of Contents
+-----------------
+1. Utilization by Hierarchy
+
+1. Utilization by Hierarchy
+---------------------------
+
++------------------+------------------------+------------+------------+---------+------+-------+--------+--------+------+------------+
+|     Instance     |         Module         | Total LUTs | Logic LUTs | LUTRAMs | SRLs |  FFs  | RAMB36 | RAMB18 | URAM | DSP Blocks |
++------------------+------------------------+------------+------------+---------+------+-------+--------+--------+------+------------+
+| hash_bd_wrapper  |                  (top) |       7767 |       6652 |     926 |  189 | 11029 |      2 |      2 |    0 |          0 |
+|   hash_bd_i      |                hash_bd |       7767 |       6652 |     926 |  189 | 11029 |      2 |      2 |    0 |          0 |
+|     axi_dma_0    |    hash_bd_axi_dma_0_0 |        612 |        556 |       0 |   56 |  1028 |      1 |      1 |    0 |          0 |
+|     axi_dma_1    |    hash_bd_axi_dma_1_0 |       1186 |       1081 |       8 |   97 |  1937 |      1 |      1 |    0 |          0 |
+|     axi_smc_ctrl | hash_bd_axi_smc_ctrl_0 |        924 |        923 |       0 |    1 |   999 |      0 |      0 |    0 |          0 |
+|     axi_smc_data | hash_bd_axi_smc_data_0 |       2361 |       1657 |     670 |   34 |  4445 |      0 |      0 |    0 |          0 |
+|     hash_0       |       hash_bd_hash_0_0 |       2676 |       2428 |     248 |    0 |  2587 |      0 |      0 |    0 |          0 |
++------------------+------------------------+------------+------------+---------+------+-------+--------+--------+------+------------+
+* Note: The sum of lower-level cells may be larger than their parent cells total, due to cross-hierarchy LUT combining
+
+

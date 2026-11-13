@@ -12,8 +12,52 @@
 #   STEPS    subset of "csim cosim impl"               (default: all; csynth always runs)
 #   DESIGN   design label (default: scripts/hls/design.txt, see common.tcl)
 #   AUTO_PARTITION  off | auto  (default: off, see below)
+#   CTRL     lite | ib  (default: lite)                 [OPT] B-04, see common.tcl
+#              lite = AXI4-Lite control (b03 interface)
+#              ib   = in-band: -DHASH_INBAND, header beat + status beat, ap_ctrl_none
 #
-# Output   : build/hls/<DESIGN>/<VARIANT>/T_<T_HLS>/   (dots -> 'p', e.g. T_6p67)
+# Output   : build/hls/<DESIGN>/<VARIANT>[-ib]/T_<T_HLS>/   (dots -> 'p', e.g. T_6p67)
+#            IP for Vivado: <point>/hls/impl/ip/  VLNV unica.it:hls:hash_<v>_<ctrl>:1.0
+#
+# -----------------------------------------------------------------------------
+# [OPT] B-04: comparison with the reference flow of the supervisors
+#   mdc-suite/AXI-based-driver-applications, kv260/applications/vpa/hls/run_hls.tcl
+#   (Vitis HLS 2021.2, launched with: vitis_hls -f run_hls.tcl)
+#
+#   run_hls.tcl (theirs)                      | run_point.tcl (ours, Vitis 2025.1.1)
+#   ------------------------------------------+-----------------------------------------------
+#   open_project -reset prj_VPA_IP            | open_component -reset T_<ns> -flow_target vivado
+#   open_solution -reset solution1            |   (2025.1 Unified flow: project + solution in
+#     -flow_target vivado                     |    one "component"; same meaning)
+#   add_files <design files>                  | add_files hash.cpp, hash.h  (+ -DHASH_INBAND if ib)
+#   add_files -tb tb.cpp                      | add_files -tb main.cpp      (+ -DHASH_INBAND if ib)
+#   set_top top_module                        | set_top hash_top
+#   set_part {xck26-sfvc784-2LV-c}            | set_part xck26-sfvc784-2LV-c           (same part)
+#   create_clock -period "350MHz"             | create_clock -period <T_HLS> (10 ns = 100 MHz)
+#   (uncertainty: tool default)               | set_clock_uncertainty 27% (= default, explicit)
+#   config_compile -enable_auto_rewind=0      | config_compile -enable_auto_rewind=true (all
+#                                             |   variants alike, see AUTO_REWIND below)
+#   (array partition: tool default)           | config_array_partition -throughput_driven off
+#   source directives.tcl (set_directive_top) | pragmas in the sources (INTERFACE, PIPELINE,
+#                                             |   INLINE, ALLOCATION...), nothing in Tcl
+#   csim_design                               | csim_design -O -clean
+#   csynth_design                             | csynth_design
+#   #cosim_design   (commented out)           | cosim_design -O  (KAT; run_cosim.tcl: throughput)
+#   export_design -format ip_catalog          | config_export -vendor/-library/-ipname/-version
+#     -display_name VPA_IP --ipname VPA_IP    |   -display_name, then export_design -format
+#                                             |   ip_catalog [-flow impl]
+#   (no Vivado run)                           | -flow impl: out-of-context synth + place&route
+#                                             |   of the IP alone -> post-route area / timing
+#   exit                                      | exit
+#
+#   Same steps and same order (csim -> csynth -> [cosim] -> export ip_catalog). Differences:
+#   - cosim: they skip it; we run it because the cycle counts of the thesis come from cosim
+#   - -flow impl: extra OOC implementation for area/Fmax (does not change the exported IP)
+#   - IP name: they set it on export_design; we set it with config_export (same effect), so
+#     that lite/ib and the three variants get distinct VLNVs in the same Vivado catalog
+#   - auto_rewind: they disable it; we keep the tool default (true) for all variants (LOG-010)
+#   - clock: target of the IP synthesis only; the board clock is set in Vivado (pl_clk0)
+# -----------------------------------------------------------------------------
 # =============================================================================
 
 # --- Settings shared by all variants (ported from */hls_config.cfg) ---
@@ -40,6 +84,8 @@ set T_HLS   [env_or T_HLS 10]
 set STEPS   [env_or STEPS "csim cosim impl"]
 set AUTO_PARTITION [env_or AUTO_PARTITION off]
 if {$AUTO_PARTITION ni {off auto}} { error "AUTO_PARTITION must be off or auto: $AUTO_PARTITION" }
+# [OPT] B-04: control version (CTRL, VDIR, CTRL_CFLAGS from common.tcl)
+set VDIR [variant_dir $VARIANT $CTRL]
 
 # --- Paths ---
 set SRC  [file join $ROOT $VARIANT]
@@ -56,11 +102,13 @@ set SRC_HASH [src_file $SRC hash]
 set SRC_TB   [src_file $SRC main]
 
 set TAG  "T_[string map {. p} $T_HLS]"
-set WORK [file join $ROOT build hls $DESIGN $VARIANT]
+# [WAS] set WORK [file join $ROOT build hls $DESIGN $VARIANT]
+# [OPT] B-04: <VARIANT>-ib for the in-band version (collect.tcl sees it as one more variant)
+set WORK [file join $ROOT build hls $DESIGN $VDIR]
 file mkdir $WORK
 cd $WORK
 
-puts "=== run_point: \[$DESIGN\] $VARIANT @ $T_HLS ns (auto partition: $AUTO_PARTITION) -> [file join $WORK $TAG] ==="
+puts "=== run_point: \[$DESIGN\] $VARIANT ctrl=$CTRL @ $T_HLS ns (auto partition: $AUTO_PARTITION) -> [file join $WORK $TAG] ==="
 
 # --- Component setup (open_component replaces open_project + open_solution) ---
 open_component -reset $TAG -flow_target vivado           ;# cfg: flow_target=vivado
@@ -69,20 +117,40 @@ open_component -reset $TAG -flow_target vivado           ;# cfg: flow_target=viv
 #       previous synthesis would be archived by collect.tcl as the KAT report of this one
 file delete -force [file join $WORK $TAG cosim]
 set_top $TOP
-add_files     $SRC_HASH                                   ;# cfg: syn.file=
-add_files     [file join $SRC hash.h]
-add_files -tb $SRC_TB                                     ;# cfg: tb.file=
+# [WAS] add_files $SRC_HASH / add_files -tb $SRC_TB
+# [OPT] B-04: -cflags selects the control version (ib: -DHASH_INBAND) for synthesis, csim and
+#       cosim alike; lite: empty flags -> same sources and settings as b03
+#       (-cflags is passed only when not empty: lite writes exactly the b03 cfg)
+proc add_src {args} {
+    if {$::CTRL_CFLAGS ne ""} { add_files {*}$args -cflags $::CTRL_CFLAGS } else { add_files {*}$args }
+}
+add_src           $SRC_HASH                               ;# cfg: syn.file= (+ syn.file_cflags)
+add_files         [file join $SRC hash.h]
+add_src       -tb $SRC_TB                                 ;# cfg: tb.file=  (+ tb.file_cflags)
 set_part $PART
 create_clock -period $T_HLS -name default                 ;# cfg: clock=
 set_clock_uncertainty $UNCERTAINTY
 config_compile -enable_auto_rewind=$AUTO_REWIND
 config_array_partition -throughput_driven $AUTO_PARTITION  ;# cfg: syn.array_partition.throughput_driven=
 
+# [OPT] B-04: IP identity in the Vivado catalog (theirs: export_design -display_name/-ipname).
+#       Distinct names for the 3 variants x 2 versions, so that one ip_repo can hold all of them;
+#       the Vivado script (scripts/vivado/build_bd.tcl) finds the IP by this VLNV.
+config_export -vendor $IP_VENDOR -library $IP_LIBRARY -version $IP_VERSION \
+              -ipname [ip_name $VARIANT $CTRL] -display_name [ip_display_name $VARIANT $CTRL] \
+              -description "Ascon / SHA-3 hash core ($VARIANT, ctrl=$CTRL, design $DESIGN)"
+
 # --- Flow ---
 if {"csim"  in $STEPS} { csim_design -O -clean }          ;# cfg: sim.O=1, csim.clean=1
 csynth_design
 if {"cosim" in $STEPS} { cosim_design -O }                ;# cfg: sim.O=1
-if {"impl"  in $STEPS} { export_design -flow impl -format ip_catalog }  ;# cfg: ip_catalog + vivado.flow=impl
+# [WAS] if {"impl" in $STEPS} { export_design -flow impl -format ip_catalog }
+# [OPT] B-04: the IP is always exported (Vivado needs it); -flow impl only adds the OOC run
+if {"impl"  in $STEPS} {
+    export_design -flow impl -format ip_catalog           ;# cfg: ip_catalog + vivado.flow=impl
+} else {
+    export_design -format ip_catalog                      ;# cfg: ip_catalog
+}
 
-puts "=== run_point: done (\[$DESIGN\] $VARIANT @ $T_HLS ns) ==="
+puts "=== run_point: done (\[$DESIGN\] $VARIANT ctrl=$CTRL @ $T_HLS ns) ==="
 exit

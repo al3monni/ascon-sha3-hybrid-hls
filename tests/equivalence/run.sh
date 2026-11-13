@@ -3,6 +3,7 @@
 # run.sh - Equivalence test of one variant against golden.txt (gcc only)
 #
 # Usage   : bash tests/equivalence/run.sh <Hybrid-Test|Sha-Test|Ascon-Test|all>
+#           CTRL=ib bash tests/equivalence/run.sh ...  -> in-band version (-DHASH_INBAND, B-04)
 # Builds  : <variant>/hash.cpp|hash.c + kat_sweep.c  ->  build/tests/<variant>
 #           (g++ for the C++ AXI-Stream variants, gcc otherwise)
 # Checks  : every (algorithm, len = 0..256) digest of hash_top() == golden.txt
@@ -36,7 +37,10 @@ check() {
         # C++ variant: everything compiled as C++ (Vitis HLS headers from VITIS_INC)
         command -v g++ > /dev/null || { echo "$v: FAIL - g++ not found (sudo apt install g++)"; return 1; }
         [ -f "$VITIS_INC/hls_stream.h" ] || { echo "$v: FAIL - hls_stream.h not found in VITIS_INC=$VITIS_INC"; return 1; }
-        g++ -O2 -Wno-unknown-pragmas -D"$def" -I"$ROOT/$v" -I"$VITIS_INC" \
+        # [OPT] B-04: CTRL=ib -> in-band version of the top (header / status beats)
+        local ctrl_def=""
+        [ "${CTRL:-lite}" = "ib" ] && ctrl_def="-DHASH_INBAND"
+        g++ -O2 -Wno-unknown-pragmas -D"$def" $ctrl_def -I"$ROOT/$v" -I"$VITIS_INC" \
             -o "$OUT/$v" "$ROOT/$v/hash.cpp" -x c++ "$HERE/kat_sweep.c" \
             || { echo "$v: FAIL - build error"; return 1; }
     else
@@ -50,7 +54,7 @@ check() {
     grep -E "^($algos) " "$HERE/golden.txt" > "$OUT/$v.golden"
 
     if diff -q "$OUT/$v.golden" "$OUT/$v.txt" > /dev/null; then
-        echo "$v: OK ($(wc -l < "$OUT/$v.txt") vectors, algos: ${algos//|/ })"
+        echo "$v [${CTRL:-lite}]: OK ($(wc -l < "$OUT/$v.txt") vectors, algos: ${algos//|/ })"
     else
         echo "$v: FAIL - first differences (< golden, > $v):"
         diff "$OUT/$v.golden" "$OUT/$v.txt" | head -n 12

@@ -322,7 +322,7 @@ int hash_init(hash_ctx_t *c, int mdlen) {
     return 1;
 }
 
-int hash_absorb(hash_ctx_t *c, hls::stream<axis64_t> &in, int inlen) {
+int hash_absorb(hash_ctx_t *c, hls::stream<axis64_t> &in, int inlen, bool ended) {
     
     /*
         Absorbs the message, read from the AXI4-Stream `in`, into the state.
@@ -336,6 +336,12 @@ int hash_absorb(hash_ctx_t *c, hls::stream<axis64_t> &in, int inlen) {
         Length: inlen (AXI4-Lite) says how many bytes are hashed, TLAST says where the stream
         ends. The loop always consumes the stream up to TLAST (no stall, no beat left for the
         next message); a mismatch returns 1. inlen = 0: no beat is read.
+        [OPT] B-04: `ended` = no beat left in the stream when the absorb starts. It replaces
+              the test on the message length, so that the same loop serves both versions:
+                lite: ended = (nbeats == 0)  -> identical to b03
+                ib:   ended = TLAST of the header beat; inlen comes from the header, so a
+                      header with TLAST and inlen > 0 (early TLAST) or without TLAST and
+                      inlen = 0 (late TLAST) is a length mismatch, still drained up to TLAST
     */
 
     // inlining hash_absorb into the top module allows
@@ -350,7 +356,9 @@ int hash_absorb(hash_ctx_t *c, hls::stream<axis64_t> &in, int inlen) {
     int rw     = c->rsiz >> 3;          // rate in words (rsiz is a multiple of 8)
     int w      = 0;                     // word index inside the current block
     int b      = 0;                     // beats read so far
-    bool last  = (nbeats == 0);         // empty message: nothing to read
+    // [WAS] bool last = (nbeats == 0);  // empty message: nothing to read
+    // [OPT] B-04: decided by the caller (see above); lite passes (nbeats == 0)
+    bool last  = ended;
 
     absorbing_loop: while (!last) {
 
@@ -454,10 +462,51 @@ void hash_squeeze(hash_ctx_t *c, hls::stream<axis64_t> &out) {
         beat.data = c->st[i];
         beat.keep = (i == nout - 1 && orem != 0) ? (ap_uint<8>) ((1 << orem) - 1) : (ap_uint<8>) 0xFF;
         beat.strb = beat.keep;
-        beat.last = (i == nout - 1);
+        beat.last = (i == nout - 1) && HASH_DIGEST_TLAST;   // [OPT] B-04: ib -> TLAST on the status beat
         out.write(beat);
     }
 }
+
+#ifdef HASH_INBAND
+
+void hash_top(hls::stream<axis64_t> &in, hls::stream<axis64_t> &out) {
+
+    /*
+        [OPT] B-04: in-band version of the IP (CTRL=ib), no AXI4-Lite; same scheme as
+              Hybrid-Test (see the comment there): ap_ctrl_none, header = first beat of `in`,
+              status = one extra beat after the digest, with TLAST. 
+              Header fields used: inlen, mdlen (mode ignored).
+    */
+
+    #pragma HLS INTERFACE mode=axis         port=in
+    #pragma HLS INTERFACE mode=axis         port=out
+    #pragma HLS INTERFACE mode=ap_ctrl_none port=return
+
+    hash_ctx_t H;
+
+    // header beat: parameters of the message that follows
+    axis64_t hdr = in.read();
+    uint64_t h   = (uint64_t) hdr.data;
+
+    int inlen = HDR_INLEN(h);
+    int mdlen = HDR_MDLEN(h);
+
+    int err;
+
+    init_call:  hash_init   (&H, mdlen);
+    abs_call:   err = hash_absorb (&H, in, inlen, hdr.last);    // TLAST on the header: no message beat
+    sqz_call:   hash_squeeze(&H, out);                          // digest beats, no TLAST
+
+    // status beat: replaces ap_return, closes the S2MM transfer
+    axis64_t st;
+    st.data = (uint64_t) err;
+    st.keep = 0xFF;
+    st.strb = 0xFF;
+    st.last = 1;
+    out.write(st);
+}
+
+#else   // lite (b03 interface)
 
 int hash_top(hls::stream<axis64_t> &in, hls::stream<axis64_t> &out, int inlen, int mdlen) {
 
@@ -492,8 +541,12 @@ int hash_top(hls::stream<axis64_t> &in, hls::stream<axis64_t> &out, int inlen, i
     int err;
 
     init_call:  hash_init   (&H, mdlen);
-    abs_call:   err = hash_absorb (&H, in, inlen);
+    // [WAS] abs_call: err = hash_absorb (&H, in, inlen);
+    // [OPT] B-04: ended = (nbeats == 0), the test that b03 did inside hash_absorb
+    abs_call:   err = hash_absorb (&H, in, inlen, ((inlen + 7) >> 3) == 0);
     sqz_call:   hash_squeeze(&H, out);
 
     return err;
 }
+
+#endif  // HASH_INBAND

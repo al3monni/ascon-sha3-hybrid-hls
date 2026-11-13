@@ -71,8 +71,10 @@ static void tb_send(hls::stream<axis64_t> &in, const uint8_t *msg, int len, int 
 // Digest beats -> bytes (what the S2MM channel writes to memory). Checks the stream protocol:
 // exactly ceil(mdlen/8) beats, TLAST only on the last one, TKEEP consistent with mdlen.
 // Returns the number of protocol errors.
+// [OPT] B-04: ib version (HASH_INBAND): digest beats without TLAST, then one status beat
+//       with TLAST; its TDATA is returned in *status (lite: *status untouched, ap_return is used)
 
-static int tb_recv(hls::stream<axis64_t> &out, uint8_t *md, int mdlen){
+static int tb_recv(hls::stream<axis64_t> &out, uint8_t *md, int mdlen, int *status){
 
     int k, n, errs = 0, nout = (mdlen + 7) >> 3;
 
@@ -86,9 +88,22 @@ static int tb_recv(hls::stream<axis64_t> &out, uint8_t *md, int mdlen){
 
         for (n = 0; n < nb; n++) md[8 * k + n] = (uint8_t) (d >> (8 * n));
 
-        if ((int) beat.last != (k == nout - 1))             { fprintf(stderr, "  digest beat %d: TLAST = %d\n", k, (int) beat.last); errs++; }
+        // [WAS] beat.last != (k == nout - 1)
+        // [OPT] B-04: expected TLAST from HASH_DIGEST_TLAST (lite: last digest beat, ib: never)
+        if ((int) beat.last != (HASH_DIGEST_TLAST && k == nout - 1)) { fprintf(stderr, "  digest beat %d: TLAST = %d\n", k, (int) beat.last); errs++; }
         if ((int) beat.keep != (nb == 8 ? 0xFF : (1 << nb) - 1)) { fprintf(stderr, "  digest beat %d: TKEEP = 0x%02X\n", k, (int) beat.keep); errs++; }
     }
+
+#ifdef HASH_INBAND
+    // [OPT] B-04: status beat (replaces ap_return), the only one with TLAST
+    if (out.empty()) { fprintf(stderr, "  status beat missing\n"); return errs + 1; }
+    axis64_t s = out.read();
+    *status = (int) (uint64_t) s.data;
+    if ((int) s.last != 1)    { fprintf(stderr, "  status beat: TLAST = 0\n"); errs++; }
+    if ((int) s.keep != 0xFF) { fprintf(stderr, "  status beat: TKEEP = 0x%02X\n", (int) s.keep); errs++; }
+#else
+    (void) status;
+#endif
 
     if (!out.empty()) { fprintf(stderr, "  digest: extra beats after TLAST\n"); errs++; }
 
@@ -103,10 +118,27 @@ static int tb_hash(const uint8_t *msg, int len, uint8_t *md, int mdlen, int beat
 
     hls::stream<axis64_t> in, out;
     int errs;
+    int nb = beats < 0 ? (len + 7) >> 3 : beats;
 
-    tb_send(in, msg, len, beats < 0 ? (len + 7) >> 3 : beats);
+#ifdef HASH_INBAND
+    // [OPT] B-04: ib version, the parameters travel in the first beat of the MM2S stream
+    //       (header layout in hash.h, common to the three variants; mode = 0 as for the
+    //       Hybrid, ignored by this standalone IP); TLAST on the header only if no message beat follows
+    axis64_t hdr;
+    hdr.data = ((uint64_t) (uint32_t) len) | (((uint64_t) mdlen) << 32) | (((uint64_t) 0) << 48);
+    hdr.keep = 0xFF;
+    hdr.strb = 0xFF;
+    hdr.last = (nb == 0);
+    in.write(hdr);
+    tb_send(in, msg, len, nb);
+    hash_top(in, out);
+    errs = tb_recv(out, md, mdlen, ret);        // *ret = status beat
+#else
+    // [WAS] tb_send(in, msg, len, beats < 0 ? (len + 7) >> 3 : beats);
+    tb_send(in, msg, len, nb);
     *ret = hash_top(in, out, len);          // mdlen only checks the digest beats (32 bytes)
-    errs = tb_recv(out, md, mdlen);
+    errs = tb_recv(out, md, mdlen, ret);        // *ret = ap_return (left untouched by tb_recv)
+#endif
 
     if (!in.empty()) { fprintf(stderr, "  message: input beats left after TLAST\n"); errs++; }
 
@@ -189,6 +221,11 @@ static int test_robust(void){
 
     // TLAST two beats late: the extra beats are drained and the mismatch reported
     if (tb_hash(msg, len, md, mdlen, 6, &ret) != 0 || ret != 1) { fprintf(stderr, "robust: late TLAST, ap_return = %d\n", ret); fails++; }
+
+#ifdef HASH_INBAND
+    // [OPT] B-04: ib only, TLAST already on the header (inlen > 0 but no message beat)
+    if (tb_hash(msg, len, md, mdlen, 0, &ret) != 0 || ret != 1) { fprintf(stderr, "robust: TLAST on header, status = %d\n", ret); fails++; }
+#endif
 
     // correct length right after: no state leaks from the previous transactions
     if (tb_hash(msg, len, md, mdlen, -1, &ret) != 0 || ret != 0) { fprintf(stderr, "robust: exact length, ap_return = %d\n", ret); fails++; }

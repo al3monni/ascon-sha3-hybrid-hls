@@ -28,6 +28,12 @@ dfx_runtime.txt
 /logs/
 
 # --- Vivado (future vivado/ folder: track only .tcl, .xdc, exported .xsa/.bit)
+#     [OPT] B-04: Vivado projects live in build/vivado/<design>/ (ignored with /build/);
+#           results/vivado/<design>/<variant>/ keeps reports, summary.txt, pl.dtsi and the
+#           block design Tcl. The hw/ subfolder (.bit, .bin, .bit.bin, .xsa: ~8 MB each,
+#           ~30 MB per configuration) is regenerable with scripts/vivado/ and is not tracked;
+#           to version a bitstream, add it explicitly (git add -f) or attach it to a release.
+results/vivado/**/hw/
 *.jou
 *.str
 *.log
