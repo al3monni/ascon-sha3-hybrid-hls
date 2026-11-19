@@ -27,9 +27,10 @@
 # Port of the supervisors' Vivado scripts (mdc-suite/AXI-based-driver-applications, KV260):
 #   aes/vivado/design_1*.tcl         write_bd_tcl dump of the AES block design (2021.2/2023)
 #   vpa/vivado/hlsPlatformDesign.tcl write_project_tcl dump of the VPA project (2021.2)
-# Those files are tool dumps tied to one design and one Vivado version (hard version check,
-# absolute paths, IP versions, imported checkpoints). This script rebuilds the same system
-# from scratch, for Vivado 2025.1.1 and for our 6 IPs:
+# Those files are tool dumps tied to one design and one Vivado version (AES design_1.tcl: hard
+# 2021.2 version check; VPA: absolute paths, imported checkpoint; 2021.2 dumps: PS 3.3).
+# This script rebuilds the same system from scratch, for Vivado 2025.1.1 and for our 6 IPs
+# (full comparison: docs/reports/porting_flusso_vivado.md):
 #
 #   their block design                         | ours
 #   -------------------------------------------+-------------------------------------------
@@ -41,11 +42,11 @@
 #   M_AXI_HPM0 (+HPM1) -> axi_interconnect      | M_AXI_HPM0_FPD -> SmartConnect (control)
 #     -> AXI DMA S_AXI_LITE                     |   -> AXI DMA S_AXI_LITE (+ IP s_axi_control,
 #                                               |      lite version only)
-#   AXI DMA: one per direction, no SG           | same: axi_dma_0 MM2S only, axi_dma_1 S2MM only
-#     (32-bit streams)                          |   (64-bit streams = one state word per beat)
+#   AXI DMA, no SG, 32-bit streams:             | as VPA: axi_dma_0 MM2S only, axi_dma_1 S2MM only
+#     AES 2 MM2S + 1 S2MM, VPA 1 MM2S + 1 S2MM  |   (64-bit streams = one state word per beat)
 #   DMA M_AXI -> SmartConnect -> S_AXI_HPC0/HP0 | DMA M_AXI -> SmartConnect -> S_AXI_HPC0_FPD
-#   DMA regs at 0xA000_0000, 0xA001_0000 ...    | same addresses (driver channel order:
-#                                               |   ch0 = MM2S, ch1 = S2MM, as in VPA)
+#   DMA regs: VPA 0xA000_0000, 0xA001_0000;     | VPA addresses (driver channel order:
+#     AES 0xA000_0000, 0xA010_0000, 0xA030_0000 |   ch0 = MM2S, ch1 = S2MM, as in VPA)
 #   IP: ap_clk, ap_rst_n + AXIS (VPA)           | ib: same (ap_ctrl_none); lite: + s_axi_control
 #   bitstream from the GUI, .bin for fpgautil   | write_bitstream + bootgen .bit.bin, .xsa,
 #                                               |   reports, pl.dtsi for the uniss_dma driver

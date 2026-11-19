@@ -1,0 +1,14 @@
+design:            b04
+variant:           Hybrid-Test-ib
+ctrl:              ib
+rtl:               T_10 (csynth @ 10 ns, same RTL as the b04 IP)
+fmax_MHz:          250
+f_achieved_MHz:    271.5
+LUT_at_fmax:       3423
+FF_at_fmax:        3078
+lowest_fail_MHz:   NA
+method:            grid 200 225 250 MHz, stop at first fail: 1, fallback -25 MHz, budget 60 min
+probes:            3
+minutes:           21
+stop:              grid: all points run
+source:            Vivado OOC post-route (export_design -flow impl, default strategies)

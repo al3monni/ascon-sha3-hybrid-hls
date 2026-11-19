@@ -15,9 +15,13 @@
 #   CTRL     lite | ib  (default: lite)                 [OPT] B-04, see common.tcl
 #              lite = AXI4-Lite control (b03 interface)
 #              ib   = in-band: -DHASH_INBAND, header beat + status beat, ap_ctrl_none
+#   F_VIVADO Fmax search only [MHz] (default: unset)    [OPT] LOG-016, see fmax_search.tcl
+#              clock of the Vivado OOC run (config_export -vivado_clock); csynth keeps T_HLS,
+#              so the RTL is the same as the T_<T_HLS> point
 #
 # Output   : build/hls/<DESIGN>/<VARIANT>[-ib]/T_<T_HLS>/   (dots -> 'p', e.g. T_6p67)
 #            IP for Vivado: <point>/hls/impl/ip/  VLNV unica.it:hls:hash_<v>_<ctrl>:1.0
+#            with F_VIVADO: build/fmax/<DESIGN>/<VARIANT>[-ib]/F_<MHz>/ (not seen by collect.tcl)
 #
 # -----------------------------------------------------------------------------
 # [OPT] B-04: comparison with the reference flow of the supervisors
@@ -86,6 +90,11 @@ set AUTO_PARTITION [env_or AUTO_PARTITION off]
 if {$AUTO_PARTITION ni {off auto}} { error "AUTO_PARTITION must be off or auto: $AUTO_PARTITION" }
 # [OPT] B-04: control version (CTRL, VDIR, CTRL_CFLAGS from common.tcl)
 set VDIR [variant_dir $VARIANT $CTRL]
+# [OPT] LOG-016: Fmax search point (fixed RTL, tighter clock for the Vivado OOC run only)
+set F_VIVADO [env_or F_VIVADO ""]
+if {$F_VIVADO ne "" && !([string is double -strict $F_VIVADO] && $F_VIVADO > 0)} {
+    error "F_VIVADO must be a frequency in MHz: '$F_VIVADO'"
+}
 
 # --- Paths ---
 set SRC  [file join $ROOT $VARIANT]
@@ -105,10 +114,19 @@ set TAG  "T_[string map {. p} $T_HLS]"
 # [WAS] set WORK [file join $ROOT build hls $DESIGN $VARIANT]
 # [OPT] B-04: <VARIANT>-ib for the in-band version (collect.tcl sees it as one more variant)
 set WORK [file join $ROOT build hls $DESIGN $VDIR]
+# [OPT] LOG-016: Fmax points in their own tree, so that the T_<ns> point (IP of the
+#       bitstreams) and results/hls/<DESIGN>/summary.csv are never touched by the search
+set VIVADO_OPTS {}
+if {$F_VIVADO ne ""} {
+    set TAG  "F_[string map {. p} $F_VIVADO]"
+    set WORK [file join $ROOT build fmax $DESIGN $VDIR]
+    lappend VIVADO_OPTS -vivado_clock [format %.4f [expr {1000.0 / $F_VIVADO}]]
+}
 file mkdir $WORK
 cd $WORK
 
 puts "=== run_point: \[$DESIGN\] $VARIANT ctrl=$CTRL @ $T_HLS ns (auto partition: $AUTO_PARTITION) -> [file join $WORK $TAG] ==="
+if {$F_VIVADO ne ""} { puts "=== run_point: Fmax point, Vivado OOC clock $F_VIVADO MHz ($VIVADO_OPTS) ===" }
 
 # --- Component setup (open_component replaces open_project + open_solution) ---
 open_component -reset $TAG -flow_target vivado           ;# cfg: flow_target=vivado
@@ -138,7 +156,10 @@ config_array_partition -throughput_driven $AUTO_PARTITION  ;# cfg: syn.array_par
 #       the Vivado script (scripts/vivado/build_bd.tcl) finds the IP by this VLNV.
 config_export -vendor $IP_VENDOR -library $IP_LIBRARY -version $IP_VERSION \
               -ipname [ip_name $VARIANT $CTRL] -display_name [ip_display_name $VARIANT $CTRL] \
-              -description "Ascon / SHA-3 hash core ($VARIANT, ctrl=$CTRL, design $DESIGN)"
+              -description "Ascon / SHA-3 hash core ($VARIANT, ctrl=$CTRL, design $DESIGN)" \
+              {*}$VIVADO_OPTS
+# [OPT] LOG-016: VIVADO_OPTS = -vivado_clock <ns> only for Fmax points (empty otherwise: the
+#       OOC run uses T_HLS, as before). It constrains the Vivado run only, not the scheduling.
 
 # --- Flow ---
 if {"csim"  in $STEPS} { csim_design -O -clean }          ;# cfg: sim.O=1, csim.clean=1

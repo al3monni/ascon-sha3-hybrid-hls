@@ -1,0 +1,4 @@
+f_target_MHz,T_target_ns,post_syn_ns,post_route_ns,wns_ns,timing,f_achieved_MHz,LUT,FF,DSP,BRAM,rtl_same,minutes
+200,5.000,2.657,4.217,0.783,met,237.1,3422,3078,0,0,yes,7.0
+225,4.444,2.657,3.820,0.624,met,261.8,3423,3078,0,0,yes,7.0
+250,4.000,2.657,3.683,0.317,met,271.5,3423,3078,0,0,yes,7.1

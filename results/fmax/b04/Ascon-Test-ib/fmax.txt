@@ -1,0 +1,14 @@
+design:            b04
+variant:           Ascon-Test-ib
+ctrl:              ib
+rtl:               T_10 (csynth @ 10 ns, same RTL as the b04 IP)
+fmax_MHz:          300
+f_achieved_MHz:    346.3
+LUT_at_fmax:       1036
+FF_at_fmax:        1219
+lowest_fail_MHz:   NA
+method:            grid 250 275 300 MHz, stop at first fail: 1, fallback -25 MHz, budget 60 min
+probes:            3
+minutes:           19
+stop:              grid: all points run
+source:            Vivado OOC post-route (export_design -flow impl, default strategies)
