@@ -37,13 +37,18 @@
 #   TIME_BUDGET_MIN grid mode: no new probe if it would end after this many minutes (0 = none)
 #   F_START   bisection: first probe [MHz]          (default: from summary.csv, see above)
 #   STEP_UP   [MHz] (default 25)   RES [MHz] (default 5)
-#   F_CAP     highest probe [MHz] (default 500)     MAX_RUNS (default 10)
+#   F_CAP     highest probe [MHz] (default 500)     MAX_RUNS (default 10, new probes only)
+#   RESUME    1 = reload the probes of points.csv and do not re-run them (default 1)
 #
-# Output   : build/fmax/<DESIGN>/<VDIR>/F_<MHz>/        HLS components (gitignored)
-#            results/fmax/<DESIGN>/<VDIR>/points.csv    one row per probe
-#            results/fmax/<DESIGN>/<VDIR>/F_<MHz>/export_impl.rpt
-#            results/fmax/<DESIGN>/<VDIR>/fmax.txt      result of the search
-#            logs/fmax/<VDIR>_F_<MHz>.log, logs/fmax/progress_<VDIR>.txt
+# [WAS] Output: build/fmax/<DESIGN>/<VDIR>/F_<MHz>/, results/fmax/<DESIGN>/<VDIR>/...
+# [OPT] LOG-016: one sub-folder per fixed RTL (T_<T_HLS>): the searches of several RTLs
+#       of the same variant (HLS clock sweep) can run side by side without overwriting
+# Output   : build/fmax/<DESIGN>/<VDIR>/<T>/F_<MHz>/        HLS components (gitignored)
+#            results/fmax/<DESIGN>/<VDIR>/<T>/points.csv    one row per probe
+#            results/fmax/<DESIGN>/<VDIR>/<T>/F_<MHz>/export_impl.rpt
+#            results/fmax/<DESIGN>/<VDIR>/<T>/fmax.txt      result of the search
+#            logs/fmax/<VDIR>_<T>_F_<MHz>.log, logs/fmax/progress_<VDIR>_<T>.txt
+#            (<T> = T_<T_HLS>, dots -> 'p', e.g. T_6p67)
 #
 # Values are post-route OOC (IP alone, no I/O constraints): they are not the frequency of the
 # KV260 system, which also depends on DMA, SmartConnect and the PS clock dividers.
@@ -66,6 +71,8 @@ set F_LIST   [env_or F_LIST ""]
 set STOP_AT_FAIL [env_or STOP_AT_FAIL 1]
 set TIME_BUDGET_MIN [env_or TIME_BUDGET_MIN 0]
 set FALLBACK_STEP   [env_or FALLBACK_STEP 25]
+# [OPT] LOG-016: resume from points.csv (interrupted night runs, probes already made)
+set RESUME   [env_or RESUME 1]
 # [OPT] F_LIST = auto: grid per variant around the OOC frequency reached at 10 ns
 #       (results/hls/b04: Hybrid ib 182.0, SHA-3 ib 178.3, Ascon ib 265.4 MHz), 3 points each
 #       so that the three searches fit in about one hour when run in parallel
@@ -77,8 +84,11 @@ set VDIR     [variant_dir $VARIANT $CTRL]
 
 set T_TAG  "T_[string map {. p} $T_HLS]"
 set REF    [file join $ROOT build hls $DESIGN $VDIR $T_TAG]   ;# point of the fixed RTL
-set BUILD  [file join $ROOT build fmax $DESIGN $VDIR]
-set OUT    [file join $ROOT results fmax $DESIGN $VDIR]
+# [WAS] set BUILD [file join $ROOT build fmax $DESIGN $VDIR]
+# [WAS] set OUT   [file join $ROOT results fmax $DESIGN $VDIR]
+# [OPT] LOG-016: one folder per fixed RTL (same layout as run_point.tcl with F_VIVADO)
+set BUILD  [file join $ROOT build fmax $DESIGN $VDIR $T_TAG]
+set OUT    [file join $ROOT results fmax $DESIGN $VDIR $T_TAG]
 set LOGS   [file join $ROOT logs fmax]
 set POINT_BAT [file nativename [file join $ROOT scripts hls run_fmax_point.bat]]
 file mkdir $OUT $LOGS
@@ -96,7 +106,8 @@ proc rd {path} {
 proc progress {msg} {
     set line "\[[clock format [clock seconds] -format {%Y-%m-%d %H:%M:%S}]\] $msg"
     puts $line
-    set fh [open [file join $::LOGS progress_$::VDIR.txt] a]
+    # [WAS] progress_$::VDIR.txt   [OPT] LOG-016: one progress file per RTL
+    set fh [open [file join $::LOGS progress_${::VDIR}_$::T_TAG.txt] a]
     puts $fh $line
     close $fh
 }
@@ -180,7 +191,8 @@ proc first_diff {a b} {
 proc run_probe {f} {
     set tag  [ftag $f]
     set comp [file join $::BUILD $tag]
-    set log  [file nativename [file join $::LOGS ${::VDIR}_$tag.log]]
+    # [WAS] ${::VDIR}_$tag.log   [OPT] LOG-016: RTL tag in the log name
+    set log  [file nativename [file join $::LOGS ${::VDIR}_${::T_TAG}_$tag.log]]
     progress "probe $f MHz: start"
     set rc 0
     if {[catch {exec cmd.exe /c $::POINT_BAT $::VARIANT $f $::CTRL $::T_HLS $log} msg]} {
@@ -219,16 +231,89 @@ proc write_points {} {
     close $fh
 }
 
+# [OPT] LOG-016: resume. Reload the probes of a previous run of the same RTL (points.csv);
+#       the report of each probe stays in F_<MHz>/. Returns the number of probes reloaded.
+proc load_points {} {
+    set csv [file join $::OUT points.csv]
+    set lines [split [string trim [rd $csv]] "\n"]
+    if {[llength $lines] < 2} { return 0 }
+    set hdr [split [lindex $lines 0] ,]
+    set n 0
+    foreach line [lrange $lines 1 end] {
+        set v [split [string trim $line] ,]
+        if {[llength $v] != [llength $hdr]} { continue }
+        foreach k $hdr x $v { set r($k) $x }
+        set d [dict create target $r(T_target_ns) post_syn $r(post_syn_ns) post_route $r(post_route_ns) \
+            wns $r(wns_ns) met [expr {$r(timing) eq "met"}] LUT $r(LUT) FF $r(FF) DSP $r(DSP) \
+            BRAM $r(BRAM) rtl_same $r(rtl_same) minutes $r(minutes)]
+        dict set ::POINTS [fnorm $r(f_target_MHz)] $d
+        incr n
+    }
+    return $n
+}
+
+# lo = highest target with timing met, hi = lowest target with timing not met
+# (only probes on the reference RTL count)
+proc update_bounds {f d} {
+    if {[dict get $d rtl_same] ne "yes"} { return }
+    if {[dict get $d met]} {
+        if {$::lo eq "" || $f > $::lo} { set ::lo $f }
+    } else {
+        if {$::hi eq "" || $f < $::hi} { set ::hi $f }
+    }
+}
+
+# [OPT] LOG-016: next probe of the bisection, from lo / hi only (same rules as before, moved
+#       into a proc so that a resumed search continues where it stopped).
+#       Returns {f ""} or {"" stop_reason}.
+proc bisect_next {} {
+    global lo hi STEP_UP F_CAP T_HLS RES
+    if {$hi eq ""} {
+        # no failure yet: step up
+        set f [expr {$lo + $STEP_UP}]
+        if {$f > $F_CAP} { return [list "" "no failure up to F_CAP = $F_CAP MHz"] }
+        return [list $f ""]
+    }
+    if {$lo eq ""} {
+        # the first probe failed: go down towards the known pass at T_HLS
+        set fl [expr {1000.0 / $T_HLS}]
+        if {$hi - $fl <= $RES} { return [list "" "fail $RES MHz above the T_HLS clock"] }
+        return [list [expr {round(($fl + $hi) / 2.0 / $RES) * $RES}] ""]
+    }
+    if {$hi - $lo <= $RES} { return [list "" "converged: hi - lo <= $RES MHz"] }
+    set f [expr {round(($lo + $hi) / 2.0 / $RES) * $RES}]
+    if {$f <= $lo || $f >= $hi} { set f [expr {$lo + $RES}] }
+    return [list $f ""]
+}
+
 # --- Main --------------------------------------------------------------------
 
 if {![file isdirectory $REF]} { error "Reference point not found: $REF (run the HLS flow first)" }
 set REF_RTL [rtl_text $REF]
 if {$REF_RTL eq ""} { error "No csynth Verilog in $REF/hls/syn/verilog" }
 
+# [WAS] POINTS / lo / hi initialised empty after the choice of the first probe
+# [OPT] LOG-016: initialised first, then filled from points.csv when RESUME = 1
+set POINTS [dict create]
+set lo ""          ;# highest target with timing met
+set hi ""          ;# lowest target with timing not met
+set stop_reason ""
+set NEW 0          ;# probes run by this invocation
+set n_old [expr {$RESUME ? [load_points] : 0}]
+dict for {fp dp} $POINTS { update_bounds $fp $dp }
+if {$n_old > 0} {
+    progress "=== fmax_search \[$DESIGN\] $VDIR $T_TAG: resumed [dict size $POINTS] probe(s) from points.csv\
+(highest pass [expr {$lo eq "" ? "NA" : $lo}] MHz, lowest fail [expr {$hi eq "" ? "NA" : $hi}] MHz)"
+}
+
 set f [env_or F_START ""]
 if {$F_LIST ne ""} {
     set F_LIST [lsort -real -unique $F_LIST]
     progress "=== fmax_search \[$DESIGN\] $VDIR: fixed RTL $T_TAG, grid $F_LIST MHz (stop at first fail: $STOP_AT_FAIL)"
+} elseif {$lo ne "" || $hi ne ""} {
+    # [OPT] LOG-016: resumed bisection: continue from the reloaded bounds (F_START ignored)
+    lassign [bisect_next] f stop_reason
+    if {$stop_reason eq ""} { progress "=== fmax_search \[$DESIGN\] $VDIR: fixed RTL $T_TAG, resumed bisection -> next probe $f MHz" }
 } elseif {$f eq ""} {
     set fref [ref_f_impl]
     if {![string is double -strict $fref]} { error "No f_impl_MHz for $VDIR @ $T_HLS ns in results/hls/$DESIGN/summary.csv: set F_START" }
@@ -238,10 +323,6 @@ if {$F_LIST ne ""} {
     progress "=== fmax_search \[$DESIGN\] $VDIR: fixed RTL $T_TAG, first probe $f MHz (F_START)"
 }
 
-set POINTS [dict create]
-set lo ""          ;# highest target with timing met
-set hi ""          ;# lowest target with timing not met
-set stop_reason ""
 if {$F_LIST ne ""} {
     # --- grid mode ---
     # [OPT] time-bounded: a probe starts only if (elapsed + longest probe so far) fits in
@@ -251,25 +332,29 @@ if {$F_LIST ne ""} {
     while {[llength $queue] > 0} {
         set f [fnorm [lindex $queue 0]]
         set queue [lrange $queue 1 end]
-        set elapsed [expr {[clock seconds] - $T0}]
-        if {$TIME_BUDGET_MIN > 0 && [dict size $POINTS] > 0 && $elapsed + $DUR_MAX > $TIME_BUDGET_MIN * 60} {
-            set stop_reason [format "time budget: %.0f min elapsed, next probe (%s MHz) would end after %s min" \
-                [expr {$elapsed / 60.0}] $f $TIME_BUDGET_MIN]
-            break
-        }
-        set t1 [clock seconds]
-        set d [run_probe $f]
-        set dur [expr {[clock seconds] - $t1}]
-        if {$dur > $DUR_MAX} { set DUR_MAX $dur }
-        if {$d eq ""} { set stop_reason "probe $f MHz failed to run"; break }
-        dict set d minutes [format %.1f [expr {$dur / 60.0}]]
-        dict set POINTS $f $d
-        write_points
-        if {[dict get $d rtl_same] ne "yes"} { set stop_reason "RTL of probe $f MHz differs from $T_TAG"; break }
-        if {[dict get $d met]} {
-            if {$lo eq "" || $f > $lo} { set lo $f }
+        if {[dict exists $POINTS $f]} {
+            # [OPT] LOG-016: probe reloaded from points.csv, not re-run
+            set d [dict get $POINTS $f]
         } else {
-            if {$hi eq "" || $f < $hi} { set hi $f }
+            set elapsed [expr {[clock seconds] - $T0}]
+            if {$TIME_BUDGET_MIN > 0 && $NEW > 0 && $elapsed + $DUR_MAX > $TIME_BUDGET_MIN * 60} {
+                set stop_reason [format "time budget: %.0f min elapsed, next probe (%s MHz) would end after %s min" \
+                    [expr {$elapsed / 60.0}] $f $TIME_BUDGET_MIN]
+                break
+            }
+            set t1 [clock seconds]
+            set d [run_probe $f]
+            set dur [expr {[clock seconds] - $t1}]
+            if {$dur > $DUR_MAX} { set DUR_MAX $dur }
+            if {$d eq ""} { set stop_reason "probe $f MHz failed to run"; break }
+            incr NEW
+            dict set d minutes [format %.1f [expr {$dur / 60.0}]]
+            dict set POINTS $f $d
+            write_points
+        }
+        if {[dict get $d rtl_same] ne "yes"} { set stop_reason "RTL of probe $f MHz differs from $T_TAG"; break }
+        update_bounds $f $d
+        if {![dict get $d met]} {
             if {$lo eq "" && !$fallback_done && $FALLBACK_STEP > 0} {
                 # first grid point failed: one probe below it, then stop
                 set fallback_done 1
@@ -284,34 +369,22 @@ if {$F_LIST ne ""} {
     }
 } else {
     # --- bisection mode ---
-    for {set run 1} {$run <= $MAX_RUNS} {incr run} {
+    # [WAS] for {set run 1} {$run <= $MAX_RUNS} {incr run} { ... next probe inline ... }
+    # [OPT] LOG-016: MAX_RUNS counts the new probes only; next probe from bisect_next
+    while {$stop_reason eq ""} {
+        if {$NEW >= $MAX_RUNS} { set stop_reason "MAX_RUNS = $MAX_RUNS reached"; break }
         set f [fnorm $f]
         if {[dict exists $POINTS $f]} { set stop_reason "probe $f MHz already run"; break }
+        set t1 [clock seconds]
         set d [run_probe $f]
         if {$d eq ""} { set stop_reason "probe $f MHz failed to run"; break }
+        incr NEW
+        dict set d minutes [format %.1f [expr {([clock seconds] - $t1) / 60.0}]]
         dict set POINTS $f $d
         write_points
         if {[dict get $d rtl_same] ne "yes"} { set stop_reason "RTL of probe $f MHz differs from $T_TAG"; break }
-
-        if {[dict get $d met]} {
-            if {$lo eq "" || $f > $lo} { set lo $f }
-        } else {
-            if {$hi eq "" || $f < $hi} { set hi $f }
-        }
-        # next probe
-        if {$hi eq ""} {
-            set f [expr {$lo + $STEP_UP}]
-            if {$f > $F_CAP} { set stop_reason "no failure up to F_CAP = $F_CAP MHz"; break }
-        } elseif {$lo eq ""} {
-            # the first probe failed: go down towards the known pass at T_HLS
-            set fl [expr {1000.0 / $T_HLS}]
-            set f  [expr {round(($fl + $hi) / 2.0 / $RES) * $RES}]
-            if {$hi - $fl <= $RES} { set stop_reason "fail $RES MHz above the T_HLS clock"; break }
-        } else {
-            if {$hi - $lo <= $RES} { set stop_reason "converged: hi - lo <= $RES MHz"; break }
-            set f [expr {round(($lo + $hi) / 2.0 / $RES) * $RES}]
-            if {$f <= $lo || $f >= $hi} { set f [expr {$lo + $RES}] }
-        }
+        update_bounds $f $d
+        lassign [bisect_next] f stop_reason
     }
 }
 if {$stop_reason eq ""} { set stop_reason "MAX_RUNS = $MAX_RUNS reached" }
@@ -330,17 +403,18 @@ set fh [open [file join $OUT fmax.txt] w]
 puts $fh "design:            $DESIGN"
 puts $fh "variant:           $VDIR"
 puts $fh "ctrl:              $CTRL"
-puts $fh "rtl:               $T_TAG (csynth @ $T_HLS ns, same RTL as the b04 IP)"
+# [WAS] "... same RTL as the b04 IP" for every RTL  [OPT] LOG-016: only T_10 is the RTL of the bitstreams
+puts $fh "rtl:               $T_TAG (csynth @ $T_HLS ns[expr {$T_HLS == 10 ? ", same RTL as the b04 IP" : ""}])"
 puts $fh "fmax_MHz:          [expr {$lo eq "" ? "NA" : $lo}]"
 puts $fh "f_achieved_MHz:    $fa_lo"
 puts $fh "LUT_at_fmax:       $lut_lo"
 puts $fh "FF_at_fmax:        $ff_lo"
 puts $fh "lowest_fail_MHz:   [expr {$hi eq "" ? "NA" : $hi}]"
 puts $fh "method:            [expr {$F_LIST ne "" ? "grid $F_LIST MHz, stop at first fail: $STOP_AT_FAIL, fallback -$FALLBACK_STEP MHz, budget $TIME_BUDGET_MIN min" : "bisection, resolution $RES MHz"}]"
-puts $fh "probes:            [dict size $POINTS]"
+puts $fh "probes:            [dict size $POINTS] ($NEW new, [expr {[dict size $POINTS] - $NEW}] resumed)"
 puts $fh "minutes:           [format %.0f [expr {([clock seconds] - $T0) / 60.0}]]"
 puts $fh "stop:              $stop_reason"
 puts $fh "source:            Vivado OOC post-route (export_design -flow impl, default strategies)"
 close $fh
-progress "=== fmax_search $VDIR DONE: Fmax = [expr {$lo eq "" ? "NA" : $lo}] MHz (achieved $fa_lo MHz), lowest fail [expr {$hi eq "" ? "NA" : $hi}] MHz; $stop_reason"
+progress "=== fmax_search $VDIR $T_TAG DONE: Fmax = [expr {$lo eq "" ? "NA" : $lo}] MHz (achieved $fa_lo MHz), lowest fail [expr {$hi eq "" ? "NA" : $hi}] MHz; $stop_reason"
 exit

@@ -8,8 +8,9 @@ rem            optional environment: CTRL (default ib),
 rem              F_LIST (default auto: Hybrid / SHA-3 200 225 250, Ascon 250 275 300 MHz),
 rem              STOP_AT_FAIL (default 1), TIME_BUDGET_MIN (default 60), FALLBACK_STEP (25);
 rem              F_LIST empty -> bisection (F_START, STEP_UP, RES, F_CAP, MAX_RUNS)
-rem Progress : logs\fmax\progress_<VARIANT>-ib.txt   (one line per probe)
-rem Results  : results\fmax\<design>\<VARIANT>-ib\   (points.csv, fmax.txt, F_<MHz>\)
+rem [OPT] LOG-016: outputs per fixed RTL (T_<T_HLS>, default T_10), resume from points.csv
+rem Progress : logs\fmax\progress_<VARIANT>-ib_T_<ns>.txt   (one line per probe)
+rem Results  : results\fmax\<design>\<VARIANT>-ib\T_<ns>\   (points.csv, fmax.txt, F_<MHz>\)
 rem ============================================================================
 setlocal
 call "%~dp0..\clean_env.bat"

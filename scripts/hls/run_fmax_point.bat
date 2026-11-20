@@ -6,7 +6,8 @@ rem   <MHz> (run_point.tcl, F_VIVADO, STEPS=impl: no csim / cosim)
 rem Location : <repo>\scripts\hls\run_fmax_point.bat
 rem Usage    : run_fmax_point.bat <VARIANT> <MHz> <lite|ib> <T_HLS> <log>
 rem            (called by fmax_search.tcl, not meant to be run by hand)
-rem Output   : build\fmax\<design>\<VARIANT>[-ib]\F_<MHz>\
+rem [OPT] LOG-016: one folder per fixed RTL (T_<T_HLS>), see run_point.tcl
+rem Output   : build\fmax\<design>\<VARIANT>[-ib]\T_<ns>\F_<MHz>\
 rem ============================================================================
 setlocal
 rem [OPT] fmax_search.tcl runs inside vitis-run: drop its environment, as for every b04 run

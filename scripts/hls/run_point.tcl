@@ -21,7 +21,7 @@
 #
 # Output   : build/hls/<DESIGN>/<VARIANT>[-ib]/T_<T_HLS>/   (dots -> 'p', e.g. T_6p67)
 #            IP for Vivado: <point>/hls/impl/ip/  VLNV unica.it:hls:hash_<v>_<ctrl>:1.0
-#            with F_VIVADO: build/fmax/<DESIGN>/<VARIANT>[-ib]/F_<MHz>/ (not seen by collect.tcl)
+#            with F_VIVADO: build/fmax/<DESIGN>/<VARIANT>[-ib]/T_<T_HLS>/F_<MHz>/ (not seen by collect.tcl)
 #
 # -----------------------------------------------------------------------------
 # [OPT] B-04: comparison with the reference flow of the supervisors
@@ -118,8 +118,11 @@ set WORK [file join $ROOT build hls $DESIGN $VDIR]
 #       bitstreams) and results/hls/<DESIGN>/summary.csv are never touched by the search
 set VIVADO_OPTS {}
 if {$F_VIVADO ne ""} {
+    # [WAS] set WORK [file join $ROOT build fmax $DESIGN $VDIR]
+    # [OPT] LOG-016: one folder per fixed RTL (T_<T_HLS>), so that the Fmax searches of
+    #       different RTLs never overwrite each other's F_<MHz> probes
+    set WORK [file join $ROOT build fmax $DESIGN $VDIR $TAG]
     set TAG  "F_[string map {. p} $F_VIVADO]"
-    set WORK [file join $ROOT build fmax $DESIGN $VDIR]
     lappend VIVADO_OPTS -vivado_clock [format %.4f [expr {1000.0 / $F_VIVADO}]]
 }
 file mkdir $WORK
